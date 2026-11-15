@@ -4,7 +4,7 @@ A backend project for managing gardens, plants, humidity levels, and automated i
 
 ## Project status
 
-The NestJS application scaffold and development tooling are configured. Domain features and PostgreSQL persistence are planned.
+The NestJS application scaffold, Swagger API documentation, and development tooling are configured. Domain features and PostgreSQL persistence are planned.
 
 ## Technology stack
 
@@ -53,6 +53,23 @@ npm run start:dev
 
 The generated application listens on port `3000` by default.
 
+## API documentation
+
+Start the application:
+
+```bash
+npm run start:dev
+```
+
+Documentation is available at:
+
+- [Swagger UI](http://localhost:3000/docs)
+- [OpenAPI JSON](http://localhost:3000/docs-json)
+
+Application endpoints use the `/api` prefix. Documentation routes remain outside that prefix.
+
+Swagger is configured directly in `src/main.ts` using `@nestjs/swagger`.
+
 ## Available commands
 
 | Command                | Description                                         |
@@ -91,13 +108,15 @@ AI coding guidance is maintained in `AGENTS.md`.
 
 ## Testing approach
 
+Current application E2E tests cover the `/api` prefix, Swagger UI, and the generated OpenAPI document. These tests do not require a database.
+
 As features are implemented:
 
 - Unit tests will cover business rules such as humidity calculations and irrigation decisions.
 - Integration tests will verify PostgreSQL queries, constraints, transactions, and concurrent capacity checks.
 - E2E tests will verify HTTP behavior, authentication, ownership, and complete application flows.
 
-Database integration and E2E tests will use an isolated test database, separate from development data.
+Tests that exercise persistence will use an isolated PostgreSQL test database, separate from development and production data.
 
 ## Planned functionality
 
@@ -106,7 +125,6 @@ Database integration and E2E tests will use an isolated test database, separate 
 - User authentication and resource ownership.
 - Humidity simulation and mocked irrigation commands.
 - Watering history and reporting.
-- API documentation through OpenAPI.
 - Docker Compose for local execution.
 - Measured optimization of frequently used endpoints.
 
