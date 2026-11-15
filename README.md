@@ -1,132 +1,113 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Automated Garden Management System
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A backend project for managing gardens, plants, humidity levels, and automated irrigation.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Project status
 
-## Description
+The NestJS application scaffold and development tooling are configured. Domain features and PostgreSQL persistence are planned.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Technology stack
 
-## Project setup
+| Area               | Technology                         |
+| ------------------ | ---------------------------------- |
+| Framework          | NestJS 12                          |
+| Language           | TypeScript with ES Modules         |
+| Database — planned | PostgreSQL                         |
+| ORM — planned      | Drizzle ORM                        |
+| Testing            | Vitest and Supertest               |
+| Linting            | Oxlint with type-aware checks      |
+| Formatting         | Prettier                           |
+| Git hooks          | Husky, lint-staged, and commitlint |
 
-```bash
-$ npm install
-```
+## Requirements
 
-## Compile and run the project
+- Node.js **24.22.3**
+- npm
+
+The intended Node.js version is declared in `.nvmrc`.
+
+With nvm:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+nvm install
+nvm use
 ```
 
-## Run tests
+Docker and Docker Compose will be required once the containerized environment is added.
+
+## Getting started
+
+Install the dependencies from the committed lockfile:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm ci
 ```
 
-## Deployment
+The installation initializes Husky through the `prepare` script.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Start the application in watch mode:
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The generated application listens on port `3000` by default.
 
-## Observability
+## Available commands
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+| Command                | Description                                         |
+| ---------------------- | --------------------------------------------------- |
+| `npm run start:dev`    | Start development mode with automatic restarts      |
+| `npm run start:debug`  | Start development mode with debugging               |
+| `npm run build`        | Build the application                               |
+| `npm run start:prod`   | Run the built application                           |
+| `npm run lint`         | Run type-aware lint checks                          |
+| `npm run format`       | Apply formatting                                    |
+| `npm run format:check` | Check formatting without modifying files            |
+| `npm test`             | Run tests selected by the main Vitest configuration |
+| `npm run test:watch`   | Run tests in watch mode                             |
+| `npm run test:cov`     | Run tests with coverage                             |
+| `npm run test:e2e`     | Run tests selected by the E2E configuration         |
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+## Development workflow
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+Oxlint checks code quality, and Prettier applies consistent formatting. Their configuration files are committed to the repository.
 
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
+Before a commit, lint-staged runs configured checks and fixes on staged files. Additional test commands are defined in `.husky/pre-commit`.
 
-```bash
-$ npx @nestjs/observe link
+The `commit-msg` hook validates Conventional Commit messages:
+
+```text
+feat(gardens): add garden creation
+fix(plants): prevent garden overcrowding
+test(irrigation): cover watering thresholds
+docs: document local development
+chore(tooling): configure git hooks
 ```
 
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
+VS Code settings and extension recommendations are provided in `.vscode/`.
 
-Or do it by hand:
+AI coding guidance is maintained in `AGENTS.md`.
 
-```bash
-$ npm install @nestjs/observe
-```
+## Testing approach
 
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
+As features are implemented:
 
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
+- Unit tests will cover business rules such as humidity calculations and irrigation decisions.
+- Integration tests will verify PostgreSQL queries, constraints, transactions, and concurrent capacity checks.
+- E2E tests will verify HTTP behavior, authentication, ownership, and complete application flows.
 
-## Resources
+Database integration and E2E tests will use an isolated test database, separate from development data.
 
-Check out a few resources that may come in handy when working with NestJS:
+## Planned functionality
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+- Garden and plant management.
+- Validation of available garden surface area.
+- User authentication and resource ownership.
+- Humidity simulation and mocked irrigation commands.
+- Watering history and reporting.
+- API documentation through OpenAPI.
+- Docker Compose for local execution.
+- Measured optimization of frequently used endpoints.
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Implementation decisions, environment variables, database commands, and API usage will be documented as these features are added.
