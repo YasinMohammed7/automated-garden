@@ -8,35 +8,54 @@ Chosen stack:
 
 - NestJS 12 with TypeScript and ES Modules.
 - Drizzle ORM with PostgreSQL.
+- `@nestjs/config` for application configuration.
+- Swagger/OpenAPI for API documentation.
 - Vitest and Supertest for testing.
 - Oxlint for linting and Prettier for formatting.
 - npm as the package manager.
 
-Read `README.md` for the current implementation status, setup instructions, and architectural decisions. Do not describe planned features as already implemented.
+Read `README.md` for implementation status, setup instructions, and architectural decisions. Do not describe planned features as already implemented.
 
-## Documentation
+## Documentation and agent tools
 
-- Before introducing or changing NestJS APIs, configuration, or integrations, consult the official documentation indexed at https://docs.nestjs.com/llms.txt.
-- For Drizzle-specific behavior, consult https://orm.drizzle.team/docs/overview.
-- Verify compatibility with the installed package versions and project configuration.
+- Use Context7 MCP for current library, framework, SDK, API, and CLI documentation.
+- Start with `resolve-library-id`, unless an exact library ID is provided, then use `query-docs` with a focused question.
+- Prefer documentation matching the installed package versions.
+- If Context7 is unavailable or insufficient, consult official documentation directly and disclose the fallback.
+- Official NestJS documentation is indexed at https://docs.nestjs.com/llms.txt.
+- Official Drizzle documentation is available at https://orm.drizzle.team/docs/overview.
+- Use the project-local Drizzle skill in `.agents/skills/drizzle/` when working on schemas, queries, database configuration, or migrations.
+- Drizzle MCP is not used. Do not install or configure it unless explicitly requested.
+- Verify documentation against installed package versions and project configuration.
 - Check documented first-party integrations before adding another library, while preserving the chosen stack.
-- For routine changes, follow established project patterns without repeating documentation research.
-- If documentation and installed package behavior differ, inspect the package types and report unresolved uncertainty.
+- If documentation and installed behavior differ, inspect the package types or source and report unresolved uncertainty.
 
 ## Implementation conventions
 
 - Organize code by feature using NestJS modules.
-- Keep Drizzle table definitions alongside their feature.
+- Keep Drizzle table definitions alongside their feature in `*.schema.ts` files.
 - Keep controllers focused on HTTP handling and business logic in services.
-- Follow the existing ESM import conventions.
+- Follow existing ESM import conventions.
 - Use Vitest APIs such as `vi.fn()` rather than Jest APIs.
 - Use the Node.js version declared in `.nvmrc`.
 - Add dependencies only when required by the requested functionality.
 - Keep setup instructions and significant architectural decisions in `README.md`.
 - Implement application bootstrap configuration directly in `src/main.ts`, following the structure of official NestJS documentation examples. This includes the global prefix, Swagger, pipes, CORS, and startup logging when required.
 - Do not create separate bootstrap configuration files, setup functions, wrappers, or helpers unless explicitly requested.
-- Adapt documentation examples only as needed for the installed versions, project requirements, and existing ESM conventions.
+- Register Nest modules through the appropriate module imports. Keep Drizzle Kit configuration in the root `drizzle.config.ts`.
+- Adapt documentation examples only as needed for installed versions, project requirements, and existing conventions.
 - Preserve unrelated changes made by the user.
+
+## Database and migrations
+
+- Use `DATABASE_URL` for the database connection. Do not hardcode credentials.
+- Keep `.env` ignored and maintain `.env.example` without real secrets.
+- Generate migrations through the installed Drizzle Kit and review their SQL.
+- Commit schema changes and corresponding migrations together.
+- Do not rewrite migrations that have already been applied or shared.
+- Do not use schema push as a replacement for the established migration workflow.
+- Do not reset databases, delete volumes, or execute destructive migrations without explicit authorization.
+- Do not manually modify bundled Drizzle skill files. Refresh them through the installer when needed.
 
 ## Commands and approvals
 
