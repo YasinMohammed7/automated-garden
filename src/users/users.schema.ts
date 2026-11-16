@@ -1,18 +1,20 @@
 import { sql } from 'drizzle-orm';
-import { check, pgTable, smallint, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { boolean, check, pgTable, smallint, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 
 export const users = pgTable(
   'users',
   {
     userId: uuid('user_id').defaultRandom().primaryKey(),
 
-    firstName: varchar('first_name', { length: 100 }).notNull(),
+    firstName: varchar('first_name', { length: 100 }),
 
-    lastName: varchar('last_name', { length: 100 }).notNull(),
+    lastName: varchar('last_name', { length: 100 }),
 
     age: smallint('age'),
 
     emailAddress: varchar('email_address', { length: 254 }).notNull().unique(),
+
+    emailVerified: boolean('email_verified').default(false).notNull(),
 
     createdAt: timestamp('created_at', {
       withTimezone: true,

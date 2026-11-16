@@ -1,0 +1,197 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "b0bcb95a-65d0-402a-8772-0edfec3c89ea",
+  "prevIds": ["136c0fe9-768b-4681-94ff-2e27b5757277"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "oidc_identities"],
+      "writes": [
+        "s|tbl|public.oidc_identities",
+        "n|tbl|public.oidc_identities",
+        "e|tbl|public.oidc_identities",
+        "n|rel|public.oidc_identities",
+        "n|type|public.oidc_identities",
+        "n|rel|public.oidc_identities_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "users", "email_verified"],
+      "writes": [
+        "s|col|public.users.email_verified",
+        "n|col|public.users.email_verified",
+        "e|col|public.users.email_verified"
+      ],
+      "reads": ["n|tbl|public.users", "n|sch|public"]
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "users", "first_name"],
+      "writes": ["s|colprop|public.users.first_name.notNull"],
+      "reads": ["n|tbl|public.users", "n|sch|public", "n|col|public.users.first_name"],
+      "sqlHash": "ea395e07d9f24318"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": ["column", "public", "users", "last_name"],
+      "writes": ["s|colprop|public.users.last_name.notNull"],
+      "reads": ["n|tbl|public.users", "n|sch|public", "n|col|public.users.last_name"],
+      "sqlHash": "784a33c2661cbed0"
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "oidc_identities"],
+      "writes": [
+        "s|fk|public.oidc_identities.oidc_identities_user_id_users_user_id_fkey",
+        "n|fk|public.oidc_identities.oidc_identities_user_id_users_user_id_fkey",
+        "e|fk|public.oidc_identities.oidc_identities_user_id_users_user_id_fkey",
+        "n|con|public.oidc_identities.oidc_identities_user_id_users_user_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.oidc_identities",
+        "n|sch|public",
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.oidc_identities.user_id",
+        "n|col|public.users.user_id",
+        "e|uniqueness|public.users.user_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "oidc_identities",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "oidc_identities",
+        "name": "provider",
+        "type": "varchar(50)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "oidc_identities",
+        "name": "subject",
+        "type": "varchar(255)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "oidc_identities",
+        "name": "user_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "oidc_identities",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "users",
+        "name": "email_verified",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "oidc_identities",
+        "name": "oidc_identities_user_id_users_user_id_fkey",
+        "nameExplicit": false,
+        "columns": ["user_id"],
+        "schemaTo": "public",
+        "tableTo": "users",
+        "columnsTo": ["user_id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "oidc_identities",
+        "name": "oidc_identities_pkey",
+        "columns": ["provider", "subject"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"users\",\"first_name\"]",
+      "set": {
+        "notNull": false
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"users\",\"last_name\"]",
+      "set": {
+        "notNull": false
+      }
+    }
+  ]
+}
