@@ -4,9 +4,9 @@ A REST backend for managing gardens, plants, humidity levels, and automated irri
 
 ## Project status
 
-The NestJS application scaffold, Swagger documentation, development tooling, PostgreSQL development container, and Drizzle configuration are in place.
+The NestJS application scaffold, Swagger documentation, development tooling, PostgreSQL development container, Drizzle configuration, and Google sign-in are in place.
 
-Domain schemas, authentication, garden management, irrigation, and reporting are planned.
+Garden management, irrigation, and reporting are planned. The users CRUD endpoints remain scaffolds to be implemented.
 
 ## Technology stack
 
@@ -80,13 +80,16 @@ The API listens on port `3000` by default.
 
 ## Environment variables
 
-| Variable            | Purpose                                                  |
-| ------------------- | -------------------------------------------------------- |
-| `PORT`              | HTTP port for the API                                    |
-| `POSTGRES_USER`     | User created during database initialization              |
-| `POSTGRES_PASSWORD` | Password used during database initialization             |
-| `POSTGRES_DB`       | Database created during initialization                   |
-| `DATABASE_URL`      | PostgreSQL connection URL used by NestJS and Drizzle Kit |
+| Variable               | Purpose                                                         |
+| ---------------------- | --------------------------------------------------------------- |
+| `PORT`                 | HTTP port for the API                                           |
+| `POSTGRES_USER`        | User created during database initialization                     |
+| `POSTGRES_PASSWORD`    | Password used during database initialization                    |
+| `POSTGRES_DB`          | Database created during initialization                          |
+| `DATABASE_URL`         | PostgreSQL connection URL used by NestJS and Drizzle Kit        |
+| `APP_URL`              | Public base URL of the API, used to build the OIDC callback URL |
+| `GOOGLE_CLIENT_ID`     | Google OAuth 2.0 client ID                                      |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth 2.0 client secret                                  |
 
 For NestJS running locally, the database URL uses `127.0.0.1:5432`. Its username, password, and database must match the PostgreSQL initialization variables.
 
@@ -114,6 +117,8 @@ Table definitions live alongside their feature:
 src/
   users/
     users.schema.ts
+  auth/
+    oidc-identities.schema.ts
   gardens/
     gardens.schema.ts
   plants/
@@ -140,7 +145,41 @@ npm run db:migrate
 
 Commit schema changes and their generated migrations together. Generating a migration does not apply it.
 
-Domain tables will be introduced through migrations as features are implemented.
+The `users` and `oidc_identities` tables are in place; remaining domain tables will be introduced through migrations as features are implemented.
+
+## Authentication
+
+Google sign-in is implemented with `@nestjs/authentication` (OpenID Connect) and server-side sessions. Configuration lives in `src/app.module.ts` through `AuthenticationModule.forRootAsync`; the auth code is organized in `src/auth/`.
+
+### Google sign-in (OIDC)
+
+- `GET /api/auth/oidc/google/login` starts the flow and redirects to Google. Optional query parameters: `redirectTo` (a relative path to land on after sign-in) and `link=true` (connect Google to the signed-in user instead of signing in).
+- `GET /api/auth/oidc/google/callback` is the redirect URI registered with Google. The configured callback URL is `${APP_URL}/api/auth/oidc/:provider/callback` — the `/api` prefix is required so it matches the application's global prefix and the registered redirect URI.
+- On first sign-in, [google-oidc-account-resolver.ts](src/auth/google-oidc-account-resolver.ts) creates a `users` row with `email_verified = true` (Google asserted the address) and records the link in `oidc_identities` (primary key `provider, subject`).
+- A returning Google account is matched by identity. An existing user with the same _verified_ email is linked; linking by email to an unverified account is refused with `403` to prevent account pre-hijacking.
+
+### Sessions
+
+After sign-in the browser receives an `HttpOnly`, `SameSite=Lax` cookie (`__Host-sid`). Session state lives server-side:
+
+- absolute TTL (default `7d`) — the hard cap from creation;
+- idle TTL (default `1d`) — expires after a day of inactivity;
+- `touchInterval` (default `1m`) — how often activity is written back.
+
+[SessionAuth](src/auth/session/session-auth.ts) validates the cookie and loads the user on every request. The `AuthenticationGuard` is registered globally, so every route requires a signed-in user unless it is marked `@Public()`. `POST /api/auth/logout` ends the current session.
+
+The session store is in-memory by default: restarting the API signs everyone out. Production needs a persistent `SessionStore` (Postgres/Redis).
+
+### Email verification
+
+- `POST /api/auth/email-verification/send` (authenticated) issues a single-use token and delivers it through the registered `EmailVerificationHandler`, which logs the link in development.
+- `POST /api/auth/email-verification/verify` (public) consumes the token and marks the address verified with a conditional update (`user_id` and `email_address` must both match).
+
+This flow is the foundation for future email/password registration; users created through Google are already verified at creation.
+
+### Rate limiting
+
+`@nestjs/throttler` applies a global default (60 requests/minute) and tighter limits on auth routes: OIDC login (10/min), verification `send` (5/hour), and `verify` (10/15 min).
 
 ## API documentation
 
@@ -204,6 +243,8 @@ For setup and troubleshooting, see the [official Husky documentation](https://ty
 
 Application E2E tests cover the `/api` prefix, Swagger UI, and the generated OpenAPI document.
 
+Authentication logic (the OIDC resolver, session validation, email verification, and their controllers) is covered by unit tests in the `*.spec.ts` files, run with `npm test`.
+
 As domain features are implemented:
 
 - Unit tests will cover business rules such as humidity calculations and irrigation decisions.
@@ -224,7 +265,6 @@ The Drizzle skill provides development guidance; it does not establish a databas
 
 ## Planned functionality
 
-- User authentication through Google sign-in.
 - Garden and plant management with ownership checks.
 - Validation of available garden surface area.
 - Humidity simulation and mocked irrigation commands.
