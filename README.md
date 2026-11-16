@@ -6,7 +6,7 @@ A REST backend for managing gardens, plants, humidity levels, and automated irri
 
 The NestJS application scaffold, Swagger documentation, development tooling, PostgreSQL development container, Drizzle configuration, and Google sign-in are in place.
 
-Garden management, irrigation, and reporting are planned. User profiles (view, update, and delete the signed-in user's account) are implemented.
+User profiles (view, update, and delete the signed-in user's account) and garden management (create, view, update, and delete gardens with ownership scoping) are implemented. Plant management, irrigation, and reporting are planned.
 
 ## Technology stack
 
@@ -199,6 +199,27 @@ Details:
 - `DELETE /users/me` removes the `users` row; `oidc_identities` is removed by its `ON DELETE CASCADE` foreign key, and the controller calls `SignInService.signOutEverywhere()` to end all of the user's sessions.
 - `email_verified` is managed by the verification flow, never by client input, so it is not part of the update DTO.
 
+## Gardens
+
+The gardens feature exposes CRUD endpoints scoped to the signed-in user (`@CurrentUser()`).
+
+| Endpoint                  | Behavior                                    |
+| ------------------------- | ------------------------------------------- |
+| `POST /api/gardens`       | Creates a garden for the current user       |
+| `GET /api/gardens`        | Lists all gardens owned by the current user |
+| `GET /api/gardens/:id`    | Returns one of the current user's gardens   |
+| `PATCH /api/gardens/:id`  | Updates a garden owned by the current user  |
+| `DELETE /api/gardens/:id` | Deletes a garden owned by the current user  |
+
+Details:
+
+- Ownership is enforced in every query: lookups filter by both `garden_id` and `user_id`, so a user cannot read or modify another user's garden.
+- `gardenName` is required (`1–100` characters, non-blank), `totalSurfaceArea` is a non-negative `double precision` value, and `locationDescription` is optional text. See [create-garden.dto.ts](src/garden/dto/create-garden.dto.ts).
+- Route `:id` parameters use `ParseUUIDPipe`, so invalid UUIDs are rejected with `400`.
+- Responses are serialized through `GardenResponseDto` in [garden-response.dto.ts](src/garden/dto/garden-response.dto.ts), which intentionally does not expose `userId`.
+- Data access lives in [garden.repository.ts](src/garden/garden.repository.ts); [garden.service.ts](src/garden/garden.service.ts) applies `plainToInstance` and throws `NotFoundException` for missing gardens.
+- The `gardens` table in [garden.schema.ts](src/garden/garden.schema.ts) has `user_id` referencing `users` with `ON DELETE CASCADE`, so deleting an account removes its gardens.
+
 ## API documentation
 
 With the application running:
@@ -261,7 +282,7 @@ For setup and troubleshooting, see the [official Husky documentation](https://ty
 
 Application E2E tests cover the `/api` prefix, Swagger UI, and the generated OpenAPI document.
 
-Authentication logic (the OIDC resolver, session validation, email verification, and their controllers) and the user profile service/controller are covered by unit tests in the `*.spec.ts` files, run with `npm test`.
+Authentication logic (the OIDC resolver, session validation, email verification, and their controllers), the user profile service/controller, and the garden service/controller are covered by unit tests in the `*.spec.ts` files, run with `npm test`.
 
 As domain features are implemented:
 
@@ -283,11 +304,11 @@ The Drizzle skill provides development guidance; it does not establish a databas
 
 ## Planned functionality
 
-- Garden and plant management with ownership checks.
+- Plant management with ownership checks.
 - Validation of available garden surface area.
 - Humidity simulation and mocked irrigation commands.
 - Watering history and reporting.
-- Removal of account-owned data (gardens, plants) when an account is deleted.
+- Removal of account-owned plants when an account is deleted.
 - API containerization.
 - Measured optimization of frequently used endpoints.
 
