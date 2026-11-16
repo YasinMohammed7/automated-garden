@@ -1,26 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import { UserResponseDto } from './dto/user-response.dto.js';
 import { UsersRepository } from './users.repository.js';
-import type { User } from './users.schema.js';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly usersRepository: UsersRepository) {}
 
-  async findProfile(userId: string): Promise<User> {
+  async findProfile(userId: string): Promise<UserResponseDto> {
     const user = await this.usersRepository.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    return user;
+    return plainToInstance(UserResponseDto, user);
   }
 
-  async updateProfile(userId: string, updateUserDto: UpdateUserDto): Promise<User> {
+  async updateProfile(userId: string, updateUserDto: UpdateUserDto): Promise<UserResponseDto> {
     const user = await this.usersRepository.update(userId, updateUserDto);
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    return user;
+    return plainToInstance(UserResponseDto, user);
   }
 
   async deleteProfile(userId: string): Promise<void> {

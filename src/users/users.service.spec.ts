@@ -38,13 +38,23 @@ async function createService(repo: ReturnType<typeof repoMock>) {
   return module.get(UsersService);
 }
 
+const profile = {
+  firstName: null,
+  lastName: null,
+  age: null,
+  emailAddress: 'john.doe@example.com',
+  emailVerified: false,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt,
+};
+
 describe('UsersService', () => {
   it('returns the profile of the current user', async () => {
     const repo = repoMock();
     repo.findById.mockResolvedValue(user);
     const service = await createService(repo);
 
-    await expect(service.findProfile('user-1')).resolves.toBe(user);
+    await expect(service.findProfile('user-1')).resolves.toEqual(profile);
     expect(repo.findById).toHaveBeenCalledWith('user-1');
   });
 
@@ -61,7 +71,7 @@ describe('UsersService', () => {
     repo.update.mockResolvedValue(user);
     const service = await createService(repo);
 
-    await expect(service.updateProfile('user-1', { firstName: 'John' })).resolves.toBe(user);
+    await expect(service.updateProfile('user-1', { firstName: 'John' })).resolves.toEqual(profile);
     expect(repo.update).toHaveBeenCalledWith('user-1', { firstName: 'John' });
   });
 
