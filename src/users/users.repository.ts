@@ -49,6 +49,22 @@ export class UsersRepository {
     return this.findById(userId);
   }
 
+  async update(
+    userId: string,
+    data: Partial<Pick<User, 'firstName' | 'lastName' | 'age'>>,
+  ): Promise<User | undefined> {
+    const rows = await this.db.update(users).set(data).where(eq(users.userId, userId)).returning();
+    return rows[0];
+  }
+
+  async delete(userId: string): Promise<boolean> {
+    const rows = await this.db
+      .delete(users)
+      .where(eq(users.userId, userId))
+      .returning({ userId: users.userId });
+    return rows.length > 0;
+  }
+
   async markEmailVerified(userId: string, email: string): Promise<boolean> {
     const rows = await this.db
       .update(users)

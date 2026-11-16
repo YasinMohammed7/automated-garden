@@ -1,60 +1,49 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch } from '@nestjs/common';
+import { CurrentUser, SignInService } from '@nestjs/authentication';
 import {
   ApiBadRequestResponse,
-  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiParam,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
+import type { User } from './users.schema.js';
 
 @ApiTags('users')
 @Controller('users')
 @ApiUnauthorizedResponse({ description: 'Not signed in' })
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly signIn: SignInService,
+  ) {}
 
-  @Post()
-  @ApiOperation({ summary: 'Create a user' })
-  @ApiCreatedResponse({ description: 'User created' })
+  @Get('me')
+  @ApiOperation({ summary: 'Get the current user profile' })
+  @ApiOkResponse({ description: 'Profile returned' })
+  getProfile(@CurrentUser() user: User) {
+    return this.usersService.findProfile(user.userId);
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Update the current user profile' })
+  @ApiOkResponse({ description: 'Profile updated' })
   @ApiBadRequestResponse({ description: 'Invalid payload' })
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  updateProfile(@CurrentUser() user: User, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.updateProfile(user.userId, updateUserDto);
   }
 
-  @Get()
-  @ApiOperation({ summary: 'List all users' })
-  @ApiOkResponse({ description: 'Users returned' })
-  findAll() {
-    return this.usersService.findAll();
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get a user by ID' })
-  @ApiParam({ name: 'id', type: String, description: 'User ID (UUID)' })
-  @ApiOkResponse({ description: 'User returned' })
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(+id);
-  }
-
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update a user' })
-  @ApiParam({ name: 'id', type: String, description: 'User ID (UUID)' })
-  @ApiOkResponse({ description: 'User updated' })
-  @ApiBadRequestResponse({ description: 'Invalid payload' })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(+id, updateUserDto);
-  }
-
-  @Delete(':id')
-  @ApiOperation({ summary: 'Delete a user' })
-  @ApiParam({ name: 'id', type: String, description: 'User ID (UUID)' })
-  @ApiOkResponse({ description: 'User deleted' })
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
+  @Delete('me')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete the current user account' })
+  @ApiNoContentResponse({ description: 'Account deleted' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  async removeMe(@CurrentUser() user: User) {
+    await this.usersService.deleteProfile(user.userId);
+    await this.signIn.signOutEverywhere(user.userId);
   }
 }
