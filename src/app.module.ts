@@ -22,14 +22,15 @@ import { HealthModule } from './health/health.module.js';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         oidc: {
-          // Includes the global "api" prefix so it matches the redirect URI
-          // registered with Google: http://localhost:3001/api/auth/oidc/google/callback
           callbackUrl: `${config.getOrThrow<string>('APP_URL')}/api/auth/oidc/:provider/callback`,
           providers: {
-            google: google({
-              clientId: config.getOrThrow<string>('GOOGLE_CLIENT_ID'),
-              clientSecret: config.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
-            }),
+            google: {
+              ...google({
+                clientId: config.getOrThrow<string>('GOOGLE_CLIENT_ID'),
+                clientSecret: config.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
+              }),
+              authorizationParams: { prompt: 'select_account' },
+            },
           },
         },
         emailVerification: {
