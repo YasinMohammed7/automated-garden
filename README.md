@@ -6,7 +6,7 @@ A REST backend for managing gardens, plants, humidity levels, and automated irri
 
 The NestJS application scaffold, Swagger documentation, development tooling, PostgreSQL development container, Drizzle configuration, and Google sign-in are in place.
 
-Garden management, irrigation, and reporting are planned. The users CRUD endpoints remain scaffolds to be implemented.
+Garden management, irrigation, and reporting are planned. User profiles (view, update, and delete the signed-in user's account) are implemented.
 
 ## Technology stack
 
@@ -181,6 +181,24 @@ This flow is the foundation for future email/password registration; users create
 
 `@nestjs/throttler` applies a global default (60 requests/minute) and tighter limits on auth routes: OIDC login (10/min), verification `send` (5/hour), and `verify` (10/15 min).
 
+## Users
+
+The users feature exposes self-service profile endpoints for the signed-in user, identified through the session (`@CurrentUser()`).
+
+| Endpoint               | Behavior                                             |
+| ---------------------- | ---------------------------------------------------- |
+| `GET /api/users/me`    | Returns the current user's profile                   |
+| `PATCH /api/users/me`  | Updates `firstName`, `lastName`, and `age`           |
+| `DELETE /api/users/me` | Deletes the account and signs out everywhere (`204`) |
+
+Details:
+
+- `emailAddress` is immutable through the update endpoint: [update-user.dto.ts](src/users/dto/update-user.dto.ts) derives from `CreateUserDto` with `OmitType` dropping the email, so changing it requires a dedicated flow that also resets `email_verified`.
+- `firstName` and `lastName` are nullable: users created through Google start with no name and fill it in later. `age` is optional and validated to `0–125`.
+- Data access lives in [users.repository.ts](src/users/users.repository.ts) and [users.service.ts](src/users/users.service.ts); [users.controller.ts](src/users/users.controller.ts) keeps HTTP handling and delegates to them.
+- `DELETE /users/me` removes the `users` row; `oidc_identities` is removed by its `ON DELETE CASCADE` foreign key, and the controller calls `SignInService.signOutEverywhere()` to end all of the user's sessions.
+- `email_verified` is managed by the verification flow, never by client input, so it is not part of the update DTO.
+
 ## API documentation
 
 With the application running:
@@ -243,7 +261,7 @@ For setup and troubleshooting, see the [official Husky documentation](https://ty
 
 Application E2E tests cover the `/api` prefix, Swagger UI, and the generated OpenAPI document.
 
-Authentication logic (the OIDC resolver, session validation, email verification, and their controllers) is covered by unit tests in the `*.spec.ts` files, run with `npm test`.
+Authentication logic (the OIDC resolver, session validation, email verification, and their controllers) and the user profile service/controller are covered by unit tests in the `*.spec.ts` files, run with `npm test`.
 
 As domain features are implemented:
 
@@ -269,7 +287,7 @@ The Drizzle skill provides development guidance; it does not establish a databas
 - Validation of available garden surface area.
 - Humidity simulation and mocked irrigation commands.
 - Watering history and reporting.
-- Account deletion and removal of account-owned data.
+- Removal of account-owned data (gardens, plants) when an account is deleted.
 - API containerization.
 - Measured optimization of frequently used endpoints.
 
