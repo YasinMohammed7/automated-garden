@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { PlantsRepository } from './plant.repository.js';
+import type { CreatePlantResult, UpdatePlantResult } from './plant.repository.js';
 import type { Plant } from './plant.schema.js';
 import { PlantService } from './plant.service.js';
 import type { CreatePlantDto } from './dto/create-plant.dto.js';
@@ -34,18 +35,13 @@ function repoMock() {
     findByUser: vi.fn<(userId: string) => Promise<Plant[]>>(),
     findByGarden: vi.fn<(userId: string, gardenId: string) => Promise<Plant[] | undefined>>(),
     findById: vi.fn<(userId: string, plantId: string) => Promise<Plant | undefined>>(),
-    findCapacity:
+    createWithCapacity:
       vi.fn<
-        (
-          userId: string,
-          gardenId: string,
-          excludePlantId?: string,
-        ) => Promise<{ totalSurfaceArea: number; usedSurfaceArea: number } | undefined>
+        (userId: string, gardenId: string, data: CreatePlantDto) => Promise<CreatePlantResult>
       >(),
-    create: vi.fn<(data: CreatePlantDto & { gardenId: string }) => Promise<Plant>>(),
-    update:
+    updateWithCapacity:
       vi.fn<
-        (userId: string, plantId: string, data: UpdatePlantDto) => Promise<Plant | undefined>
+        (userId: string, plantId: string, data: UpdatePlantDto) => Promise<UpdatePlantResult>
       >(),
     delete: vi.fn<(userId: string, plantId: string) => Promise<boolean>>(),
   };
@@ -127,51 +123,43 @@ describe('PlantService', () => {
 
   it('creates a plant in a garden owned by the user', async () => {
     const repo = repoMock();
-    repo.findCapacity.mockResolvedValue({ totalSurfaceArea: 12.5, usedSurfaceArea: 5 });
-    repo.create.mockResolvedValue(plant);
+    repo.createWithCapacity.mockResolvedValue({ ok: true, plant });
     const service = await createService(repo);
 
     const result = await service.create('user-1', 'garden-1', createDto);
     expect(result).toMatchObject({ plantName: 'Tomato', gardenId: 'garden-1' });
     expect(result).not.toHaveProperty('userId');
-    expect(repo.findCapacity).toHaveBeenCalledWith('user-1', 'garden-1');
-    expect(repo.create).toHaveBeenCalledWith({
-      plantName: 'Tomato',
-      species: 'Solanum lycopersicum',
-      plantType: 'vegetable',
-      plantationDate: '2026-05-01',
-      surfaceAreaRequired: 1.5,
-      idealHumidityLevel: 60,
-      gardenId: 'garden-1',
-    });
+    expect(repo.createWithCapacity).toHaveBeenCalledWith('user-1', 'garden-1', createDto);
   });
 
   it('allows creating a plant that exactly fills the remaining surface area', async () => {
     const repo = repoMock();
-    repo.findCapacity.mockResolvedValue({ totalSurfaceArea: 12.5, usedSurfaceArea: 11 });
-    repo.create.mockResolvedValue(plant);
+    repo.createWithCapacity.mockResolvedValue({ ok: true, plant });
     const service = await createService(repo);
 
     await expect(service.create('user-1', 'garden-1', createDto)).resolves.toMatchObject({
       gardenId: 'garden-1',
     });
-    expect(repo.create).toHaveBeenCalled();
   });
 
   it('throws when creating a plant in a garden the user does not own', async () => {
     const repo = repoMock();
-    repo.findCapacity.mockResolvedValue(undefined);
+    repo.createWithCapacity.mockResolvedValue({ ok: false, reason: 'garden-not-found' });
     const service = await createService(repo);
 
     await expect(service.create('user-1', 'someone-else-garden', createDto)).rejects.toBeInstanceOf(
       NotFoundException,
     );
-    expect(repo.create).not.toHaveBeenCalled();
   });
 
   it('rejects an overcrowded garden when creating a plant', async () => {
     const repo = repoMock();
-    repo.findCapacity.mockResolvedValue({ totalSurfaceArea: 12.5, usedSurfaceArea: 12 });
+    repo.createWithCapacity.mockResolvedValue({
+      ok: false,
+      reason: 'overcrowded',
+      requiredArea: 1.5,
+      availableArea: 0.5,
+    });
     const service = await createService(repo);
 
     await expect(service.create('user-1', 'garden-1', createDto)).rejects.toBeInstanceOf(
@@ -180,41 +168,45 @@ describe('PlantService', () => {
     await expect(service.create('user-1', 'garden-1', createDto)).rejects.toThrow(
       'Garden is overcrowded: 1.5 m² required but only 0.5 m² available',
     );
-    expect(repo.create).not.toHaveBeenCalled();
   });
 
   it('updates a plant owned by the user', async () => {
     const repo = repoMock();
-    repo.findById.mockResolvedValue(plant);
-    repo.update.mockResolvedValue({ ...plant, plantName: 'Cherry Tomato' });
+    repo.updateWithCapacity.mockResolvedValue({
+      ok: true,
+      plant: { ...plant, plantName: 'Cherry Tomato' },
+    });
     const dto: UpdatePlantDto = { plantName: 'Cherry Tomato' };
     const service = await createService(repo);
 
     const result = await service.update('user-1', 'plant-1', dto);
     expect(result).toMatchObject({ plantName: 'Cherry Tomato' });
     expect(result).not.toHaveProperty('userId');
-    expect(repo.findCapacity).not.toHaveBeenCalled();
-    expect(repo.update).toHaveBeenCalledWith('user-1', 'plant-1', dto);
+    expect(repo.updateWithCapacity).toHaveBeenCalledWith('user-1', 'plant-1', dto);
   });
 
   it('updates a plant surface area that fits the garden', async () => {
     const repo = repoMock();
-    repo.findById.mockResolvedValue(plant);
-    repo.findCapacity.mockResolvedValue({ totalSurfaceArea: 12.5, usedSurfaceArea: 5 });
-    repo.update.mockResolvedValue({ ...plant, surfaceAreaRequired: 2 });
+    repo.updateWithCapacity.mockResolvedValue({
+      ok: true,
+      plant: { ...plant, surfaceAreaRequired: 2 },
+    });
     const dto: UpdatePlantDto = { surfaceAreaRequired: 2 };
     const service = await createService(repo);
 
     const result = await service.update('user-1', 'plant-1', dto);
     expect(result).toMatchObject({ surfaceAreaRequired: 2 });
-    expect(repo.findCapacity).toHaveBeenCalledWith('user-1', 'garden-1', 'plant-1');
-    expect(repo.update).toHaveBeenCalledWith('user-1', 'plant-1', dto);
+    expect(repo.updateWithCapacity).toHaveBeenCalledWith('user-1', 'plant-1', dto);
   });
 
   it('rejects an overcrowded garden when updating a plant surface area', async () => {
     const repo = repoMock();
-    repo.findById.mockResolvedValue(plant);
-    repo.findCapacity.mockResolvedValue({ totalSurfaceArea: 12.5, usedSurfaceArea: 10 });
+    repo.updateWithCapacity.mockResolvedValue({
+      ok: false,
+      reason: 'overcrowded',
+      requiredArea: 5,
+      availableArea: 2.5,
+    });
     const dto: UpdatePlantDto = { surfaceAreaRequired: 5 };
     const service = await createService(repo);
 
@@ -224,16 +216,24 @@ describe('PlantService', () => {
     await expect(service.update('user-1', 'plant-1', dto)).rejects.toThrow(
       'Garden is overcrowded: 5 m² required but only 2.5 m² available',
     );
-    expect(repo.update).not.toHaveBeenCalled();
   });
 
   it('throws when updating a missing plant', async () => {
     const repo = repoMock();
-    repo.findById.mockResolvedValue(undefined);
+    repo.updateWithCapacity.mockResolvedValue({ ok: false, reason: 'plant-not-found' });
     const service = await createService(repo);
 
     await expect(service.update('user-1', 'missing', {})).rejects.toBeInstanceOf(NotFoundException);
-    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it('throws when updating a plant whose garden is gone', async () => {
+    const repo = repoMock();
+    repo.updateWithCapacity.mockResolvedValue({ ok: false, reason: 'garden-not-found' });
+    const service = await createService(repo);
+
+    await expect(
+      service.update('user-1', 'plant-1', { surfaceAreaRequired: 2 }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('removes a plant owned by the user', async () => {

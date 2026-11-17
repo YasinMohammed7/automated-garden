@@ -40,25 +40,18 @@ export class PlantService {
     gardenId: string,
     createPlantDto: CreatePlantDto,
   ): Promise<PlantResponseDto> {
-    const capacity = await this.plantsRepository.findCapacity(userId, gardenId);
+    const result = await this.plantsRepository.createWithCapacity(userId, gardenId, createPlantDto);
 
-    if (!capacity) {
-      throw new NotFoundException('Garden not found');
+    if (!result.ok) {
+      if (result.reason === 'garden-not-found') {
+        throw new NotFoundException('Garden not found');
+      }
+      throw new ConflictException(
+        `Garden is overcrowded: ${result.requiredArea} m² required but only ${result.availableArea} m² available`,
+      );
     }
 
-    this.assertCapacity(capacity, createPlantDto.surfaceAreaRequired);
-
-    const plant = await this.plantsRepository.create({
-      plantName: createPlantDto.plantName,
-      species: createPlantDto.species,
-      plantType: createPlantDto.plantType,
-      plantationDate: createPlantDto.plantationDate,
-      surfaceAreaRequired: createPlantDto.surfaceAreaRequired,
-      idealHumidityLevel: createPlantDto.idealHumidityLevel,
-      gardenId,
-    });
-
-    return plainToInstance(PlantResponseDto, plant);
+    return plainToInstance(PlantResponseDto, result.plant);
   }
 
   async update(
@@ -66,46 +59,21 @@ export class PlantService {
     plantId: string,
     updatePlantDto: UpdatePlantDto,
   ): Promise<PlantResponseDto> {
-    const existing = await this.plantsRepository.findById(userId, plantId);
+    const result = await this.plantsRepository.updateWithCapacity(userId, plantId, updatePlantDto);
 
-    if (!existing) {
-      throw new NotFoundException('Plant not found');
-    }
-
-    if (updatePlantDto.surfaceAreaRequired !== undefined) {
-      const capacity = await this.plantsRepository.findCapacity(
-        userId,
-        existing.gardenId,
-        existing.plantId,
-      );
-
-      if (!capacity) {
+    if (!result.ok) {
+      if (result.reason === 'plant-not-found') {
+        throw new NotFoundException('Plant not found');
+      }
+      if (result.reason === 'garden-not-found') {
         throw new NotFoundException('Garden not found');
       }
-
-      this.assertCapacity(capacity, updatePlantDto.surfaceAreaRequired);
-    }
-
-    const plant = await this.plantsRepository.update(userId, plantId, updatePlantDto);
-
-    if (!plant) {
-      throw new NotFoundException('Plant not found');
-    }
-
-    return plainToInstance(PlantResponseDto, plant);
-  }
-
-  private assertCapacity(
-    capacity: { totalSurfaceArea: number; usedSurfaceArea: number },
-    additionalArea: number,
-  ): void {
-    const available = capacity.totalSurfaceArea - capacity.usedSurfaceArea;
-
-    if (additionalArea > available) {
       throw new ConflictException(
-        `Garden is overcrowded: ${additionalArea} m² required but only ${available} m² available`,
+        `Garden is overcrowded: ${result.requiredArea} m² required but only ${result.availableArea} m² available`,
       );
     }
+
+    return plainToInstance(PlantResponseDto, result.plant);
   }
 
   async remove(userId: string, plantId: string): Promise<void> {
