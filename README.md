@@ -309,7 +309,7 @@ For setup and troubleshooting, see the [official Husky documentation](https://ty
 
 Application E2E tests cover the `/api` prefix, Swagger UI, and the generated OpenAPI document.
 
-Authentication logic (the OIDC resolver, session validation, email verification, and their controllers), the user profile service/controller, the garden and plant service/controllers, and the plant DTO validation rules (including the `0–100` target humidity range) are covered by unit tests in the `*.spec.ts` files, run with `npm test`.
+Authentication logic (the OIDC resolver, session validation, email verification, and their controllers), the user profile service/controller, the garden and plant service/controllers, and the request DTO validation rules (garden, plant, user, and email-verification payloads) are covered by unit tests in the `*.spec.ts` files, run with `npm test`.
 
 As domain features are implemented:
 
