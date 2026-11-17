@@ -170,12 +170,14 @@ After sign-in the browser receives an `HttpOnly`, `SameSite=Lax` cookie (`__Host
 
 [SessionAuth](src/auth/session/session-auth.ts) validates the cookie and loads the user on every request. The `AuthenticationGuard` is registered globally, so every route requires a signed-in user unless it is marked `@Public()`. `POST /api/auth/logout` ends the current session.
 
-The session store is in-memory by default: restarting the API signs everyone out. Production needs a persistent `SessionStore` (Postgres/Redis).
+The session store is persisted in PostgreSQL through [DrizzleSessionStore](src/auth/session/drizzle-session.store.ts), registered with `AuthenticationStorage.registerSource({ sessions: this })`. Sessions survive restarts; the `sessions` table (see [session.schema.ts](src/auth/session/session.schema.ts)) stores the SHA-256 of the cookie token, its user, and its expiry and last-activity timestamps. OIDC login states and email-verification tokens remain in-memory (losing them only requires retrying).
 
 ### Email verification
 
-- `POST /api/auth/email-verification/send` (authenticated) issues a single-use token and delivers it through the registered `EmailVerificationHandler`, which logs the link in development.
-- `POST /api/auth/email-verification/verify` (public) consumes the token and marks the address verified with a conditional update (`user_id` and `email_address` must both match).
+- `POST /api/auth/email-verification/send` (authenticated) issues a single-use 6-digit code and logs it to the console (no mailer is configured yet, so the code is printed instead of emailed). Calling it again resends a new code; the latest code replaces any previous one. A resend cooldown of `1m` applies between sends (returns `429` with the remaining wait), on top of the throttler's `5` per hour cap.
+- `POST /api/auth/email-verification/verify` (public) consumes the code and marks the address verified with a conditional update (`user_id` and `email_address` must both match).
+
+The library stores a 256-bit token (hashed) and drives verification; [email-verification-mailer.ts](src/auth/mail/email-verification-mailer.ts) maps each token to a 6-digit code for delivery and logging. Codes are held in memory, so restarting the API invalidates pending codes (the user simply asks for a new one). Codes expire after `10m` (the `emailVerification.ttl` configured in `src/app.module.ts`), because a 6-digit code is guessable and a short window limits the risk; the `verify` route is rate-limited to `10` attempts per `15m`.
 
 This flow is the foundation for future email/password registration; users created through Google are already verified at creation.
 
