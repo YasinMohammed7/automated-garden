@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DrizzleModule } from '@nestjs/drizzle';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { drizzle } from 'drizzle-orm/node-postgres';
+import { relations } from './database/database.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
@@ -45,6 +46,7 @@ import { GardenModule } from './garden/garden.module.js';
       useFactory: (config: ConfigService) => ({
         drizzle,
         connection: config.getOrThrow<string>('DATABASE_URL'),
+        relations,
       }),
     }),
     UsersModule,
