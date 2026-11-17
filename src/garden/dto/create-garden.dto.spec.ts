@@ -1,16 +1,17 @@
 import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it } from 'vitest';
 import { CreateGardenDto } from './create-garden.dto.js';
 
+const validPayload = {
+  gardenName: 'Backyard',
+  totalSurfaceArea: 12.5,
+};
+
 function makeDto(overrides: Record<string, unknown> = {}): CreateGardenDto {
-  const instance = new CreateGardenDto();
-  Object.assign(instance, {
-    gardenName: 'Backyard',
-    totalSurfaceArea: 12.5,
-    ...overrides,
-  });
-  return instance;
+  // Mirrors the ValidationPipe (transform: true): coerce plain input first.
+  return plainToInstance(CreateGardenDto, { ...validPayload, ...overrides });
 }
 
 async function errorsFor(overrides: Record<string, unknown> = {}) {
@@ -46,5 +47,17 @@ describe('CreateGardenDto', () => {
   it('rejects a locationDescription longer than 1000 characters', async () => {
     const errors = await errorsFor({ locationDescription: 'a'.repeat(1001) });
     expect(errors.some((e) => e.property === 'locationDescription')).toBe(true);
+  });
+
+  it('coerces totalSurfaceArea from a string', async () => {
+    const dto = makeDto({ totalSurfaceArea: '12.5' });
+
+    expect(dto.totalSurfaceArea).toBe(12.5);
+    await expect(validate(dto)).resolves.toHaveLength(0);
+  });
+
+  it('rejects a non-numeric totalSurfaceArea string', async () => {
+    const errors = await errorsFor({ totalSurfaceArea: 'not-a-number' });
+    expect(errors.some((e) => e.property === 'totalSurfaceArea')).toBe(true);
   });
 });

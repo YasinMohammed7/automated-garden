@@ -1,20 +1,21 @@
 import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it } from 'vitest';
 import { CreatePlantDto } from './create-plant.dto.js';
 
+const validPayload = {
+  plantName: 'Tomato',
+  species: 'Solanum lycopersicum',
+  plantType: 'vegetable',
+  plantationDate: '2026-05-01',
+  surfaceAreaRequired: 1.5,
+  idealHumidityLevel: 60,
+};
+
 function makeDto(overrides: Record<string, unknown> = {}): CreatePlantDto {
-  const instance = new CreatePlantDto();
-  Object.assign(instance, {
-    plantName: 'Tomato',
-    species: 'Solanum lycopersicum',
-    plantType: 'vegetable',
-    plantationDate: '2026-05-01',
-    surfaceAreaRequired: 1.5,
-    idealHumidityLevel: 60,
-    ...overrides,
-  });
-  return instance;
+  // Mirrors the ValidationPipe (transform: true): coerce plain input first.
+  return plainToInstance(CreatePlantDto, { ...validPayload, ...overrides });
 }
 
 async function errorsFor(overrides: Record<string, unknown> = {}) {
@@ -57,6 +58,19 @@ describe('CreatePlantDto', () => {
 
   it('rejects a negative surfaceAreaRequired', async () => {
     const errors = await errorsFor({ surfaceAreaRequired: -1 });
+    expect(errors.some((e) => e.property === 'surfaceAreaRequired')).toBe(true);
+  });
+
+  it('coerces numeric strings to numbers', async () => {
+    const dto = makeDto({ surfaceAreaRequired: '1.5', idealHumidityLevel: '60' });
+
+    expect(dto.surfaceAreaRequired).toBe(1.5);
+    expect(dto.idealHumidityLevel).toBe(60);
+    await expect(validate(dto)).resolves.toHaveLength(0);
+  });
+
+  it('rejects a non-numeric surfaceAreaRequired string', async () => {
+    const errors = await errorsFor({ surfaceAreaRequired: 'not-a-number' });
     expect(errors.some((e) => e.property === 'surfaceAreaRequired')).toBe(true);
   });
 });

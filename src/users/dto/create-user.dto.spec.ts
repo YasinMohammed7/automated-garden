@@ -1,15 +1,12 @@
 import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it } from 'vitest';
 import { CreateUserDto } from './create-user.dto.js';
 
 function makeDto(overrides: Record<string, unknown> = {}): CreateUserDto {
-  const instance = new CreateUserDto();
-  Object.assign(instance, {
-    emailAddress: 'john.doe@example.com',
-    ...overrides,
-  });
-  return instance;
+  // Mirrors the ValidationPipe (transform: true): coerce plain input first.
+  return plainToInstance(CreateUserDto, { emailAddress: 'john.doe@example.com', ...overrides });
 }
 
 async function errorsFor(overrides: Record<string, unknown> = {}) {
@@ -60,5 +57,12 @@ describe('CreateUserDto', () => {
   it('rejects a non-integer age', async () => {
     const errors = await errorsFor({ age: 25.5 });
     expect(errors.some((e) => e.property === 'age')).toBe(true);
+  });
+
+  it('trims and lowercases emailAddress', async () => {
+    const dto = makeDto({ emailAddress: '  John.Doe@Example.com  ' });
+
+    expect(dto.emailAddress).toBe('john.doe@example.com');
+    await expect(validate(dto)).resolves.toHaveLength(0);
   });
 });
