@@ -45,6 +45,22 @@ Read `README.md` for implementation status, setup instructions, and architectura
 - Register Nest modules through the appropriate module imports. Keep Drizzle Kit configuration in the root `drizzle.config.ts`.
 - Adapt documentation examples only as needed for installed versions, project requirements, and existing conventions.
 - Preserve unrelated changes made by the user.
+- **Response serialization:** hide internal fields with a global `ClassSerializerInterceptor` (registered in `src/main.ts`) plus `@Exclude()`/`@Expose()` response DTOs, and convert rows in services with `plainToInstance(ResponseDto, row)`. Do NOT enable `excludeExtraneousValues: true`, which would strip plain-object responses such as health, verify, and OIDC redirects. `userId` is deliberately excluded from garden and plant responses (OWASP); it is exposed on the user's own profile.
+- **Ownership scoping:** every repository query filters by the authenticated user. Direct lookups use `and(eq(...userId), eq(...id))`; lookups through a parent use a subquery (`inArray(col, select(...).from(gardens).where(eq(userId)))`) or a relational query. The user id comes from `@CurrentUser()`, never from the request body.
+- **One-to-many routes:** use nested routes for parent-scoped operations and flat routes for item operations (e.g. `POST/GET /gardens/:gardenId/plants` alongside `GET/PATCH/DELETE /plants/:id`). Put both controllers in the same feature module, sharing one service.
+- **DTOs stay in the HTTP layer.** Controllers and validation use DTOs; repositories are typed only from the schema (`$inferSelect`/`$inferInsert`, `Pick`/`Omit`). Do not import request DTOs into repositories.
+- **Relations:** declare table relations once in `src/database/database.ts` with Drizzle v1's `defineRelations()` and pass them to `DrizzleModule.forRootAsync()`; inject the typed `Database` alias instead of `NodePgDatabase`. Relations enable `db.query.*` but do not express aggregates — keep `leftJoin … groupBy` for sums.
+- **Timestamps:** store `timestamp with time zone` in UTC and serialize as ISO 8601 UTC. Convert to local time at the presentation layer only; never set a container `TZ` to "fix" offsets.
+
+## Authentication (`@nestjs/authentication`, v0.1.6)
+
+Learned from this package while wiring Google OIDC, sessions, and email verification:
+
+- `globalGuard` is enabled by default: every route returns 401 unless marked `@Public()`.
+- A feature only works once its handler/provider is registered from its constructor: `OidcAccountResolver` (`registry.registerHandler('oidc', this)`), `SessionCookieProvider` (`registry.registerProvider(this)`), and `EmailVerificationHandler` (`registry.registerHandler('emailVerification', this)`). Sessions are unrecognized without a `SessionCookieProvider`.
+- **Session store:** the default is in-memory. To persist across restarts, implement `SessionStore` and register it with `AuthenticationStorage.registerSource({ sessions: this })` from a provider constructor. Contract rules: `id` is the SHA-256 of the cookie token (the raw token is never stored); `touchSession` is a forward-only conditional update (`WHERE last_active_at < ?`); `deleteSession` returns whether the row was deleted; `createSession` should sweep expired rows.
+- **Email verification:** the library generates a 256-bit token, stores only its hash, and passes the token to `handler.send()` inside `link.url`. Its `verify()` rejects anything that is not one of its tokens, so a 6-digit code is delivered by mapping `code → token` in the handler (in-memory), then resolving the code to the token before calling `verify()`. The default link TTL is `24h`; this project sets `ttl: '10m'` because a 6-digit code is guessable. A `1m` resend cooldown (429 with remaining wait) complements the throttler's `5/hour` cap; the latest code replaces previous ones.
+- `authenticationStoreContract()` from `@nestjs/authentication/testing` is the contract suite for store implementations; it needs a real database and belongs in the integration tier.
 
 ## Database and migrations
 
@@ -56,6 +72,7 @@ Read `README.md` for implementation status, setup instructions, and architectura
 - Do not use schema push as a replacement for the established migration workflow.
 - Do not reset databases, delete volumes, or execute destructive migrations without explicit authorization.
 - Do not manually modify bundled Drizzle skill files. Refresh them through the installer when needed.
+- The user runs `npm run db:generate` and `npm run db:migrate` themselves and reviews the SQL. Generate or apply migrations only when explicitly asked, and never apply them without the user having reviewed the generated SQL.
 
 ## Commands and approvals
 
@@ -64,6 +81,8 @@ Read `README.md` for implementation status, setup instructions, and architectura
 - If approval is denied or a command cannot run, report it accurately.
 - Do not claim that unexecuted checks passed.
 - Do not execute destructive operations without explicit authorization.
+- Node is installed via nvm. In shells where `node` is not found, prefix commands with the Node path from `.nvmrc` (e.g. `export PATH="/Users/sunnyasin/.nvm/versions/node/v24.22.3/bin:$PATH"`) before running `npm`/`node`.
+- The development PostgreSQL container is `automated-garden-postgres-1`; inspect it with `docker exec … psql -U test_user -d automated_garden` rather than assuming schema state.
 
 ## Testing and verification
 
@@ -76,6 +95,12 @@ For every feature or bug fix, add unit, integration, and E2E tests where applica
 Use multiple levels when each covers a distinct risk. Do not duplicate assertions merely to increase coverage.
 
 Keep unit tests independent of PostgreSQL and external services. Tests that exercise database behavior must use real PostgreSQL in an isolated test environment, never development or production databases.
+
+Repository unit tests are chain-mocked: pass a fake `db` object whose `select`/`insert`/`update`/`delete`/`query` methods return stubbed chains (as in `drizzle-session.store.spec.ts`), and assert the payloads (`.set(...)`, `.values(...)`, `where` args) and the return semantics (row/`undefined`/boolean/throw). These verify query shape, not real SQL; constraints, `ON CONFLICT`, cascades, and concurrency belong in the integration tier.
+
+DTO validation specs mirror the `ValidationPipe` (`transform: true`): run `plainToInstance(Dto, payload)` first, then `validate(instance)`, so the `@Type`/`@Transform` coercion callbacks (number coercion, email normalization) are actually exercised and asserted. Import `'reflect-metadata'` first, and store the `validate()` result in a variable before asserting.
+
+The garden-capacity check is enforced atomically in [plant.repository.ts](src/plant/plant.repository.ts): `createWithCapacity` and `updateWithCapacity` run the check and the write in one transaction and lock the garden row with `SELECT … FOR UPDATE`, so concurrent writes to the same garden serialize and the committed total can never exceed `totalSurfaceArea`. The database concurrency test that proves this under a real isolated PostgreSQL (AGENTS.md requirement) is still pending and belongs in the integration tier.
 
 For garden capacity changes, include a database concurrency test. For irrigation timing, use a controllable clock instead of real-time waits.
 
@@ -100,3 +125,4 @@ Report checks that passed, checks that could not run, and briefly explain any te
 - Include lockfile changes when dependencies change.
 - Do not bypass failing Git hooks.
 - Create commits only when explicitly requested.
+- When asked for commit commands, propose one commit per coherent feature (code, then tests as `test(...)`, then docs as `docs(...)`), and give explicit `git add` paths; use `git add -p` only when a file spans two commits, with clear per-hunk instructions.
