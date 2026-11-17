@@ -247,6 +247,42 @@ Details:
 - Data access lives in [plant.repository.ts](src/plant/plant.repository.ts); [plant.service.ts](src/plant/plant.service.ts) applies `plainToInstance` and throws `NotFoundException` for missing plants or gardens.
 - The `plants` table in [plant.schema.ts](src/plant/plant.schema.ts) has `garden_id` referencing `gardens` with `ON DELETE CASCADE`, so deleting a garden removes its plants.
 
+## Realtime plant metrics and irrigation
+
+Each plant has one `realtime_plant_metrics` row holding its current state: `current_humidity_level` (0–100), `last_irrigation_start_time`, and `last_irrigation_end_time`. The `plant_id` is both primary key and foreign key to `plants` (`ON DELETE CASCADE`), so a plant has exactly one current-state record. See [plant-metric.schema.ts](src/plant-metric/plant-metric.schema.ts).
+
+### Simulation behaviour (planned)
+
+Since there are no real sensors, the system simulates humidity and irrigation locally:
+
+- Every plant starts at `50%` `current_humidity_level`.
+- Every minute the humidity drops by plant type: `1%` for vegetables, `3%` for fruits, `4%` for flowers.
+- When a plant's humidity falls below its `idealHumidityLevel`, the simulator commands the irrigation system to water that plant.
+- Watering takes `2` minutes and raises the humidity by `16%` (vegetables), `18%` (fruits), or `20%` (flowers).
+
+The simulation runs on a scheduled one-minute tick and dispatches commands to a mocked irrigation system with an individually controllable irrigation line per plant.
+
+### Theoretical production architecture (bonus)
+
+For a real deployment, the same behaviour maps onto AWS with NestJS:
+
+- **Ingestion** — sensors publish to **AWS IoT Core** over MQTT. A separate **NestJS microservice** (or Lambda/ECS worker) subscribed through an IoT Rule to SQS consumes the readings, so sensor traffic never slows the REST API.
+- **Storage** — **Redis** holds hot state (latest humidity, irrigation status, cooldown locks) for sub-millisecond threshold checks; **TimescaleDB** (PostgreSQL extension) stores the cold time-series log with automatic partitioning and retention.
+- **Watering** — a **command-and-acknowledge** pattern with hardware fail-safes. The consumer checks `humidity < idealHumidityLevel` and, if Redis shows no active cooldown lock, publishes `START_WATERING` (duration 120s) to the device topic. The valve controller (e.g. ESP32) opens the valve and runs its own hardware countdown, so it shuts off even if connectivity drops. The device publishes `WATERING_STARTED`/`WATERING_COMPLETED`, and the consumer updates `last_irrigation_start_time`/`last_irrigation_end_time` from those acknowledgements (not from the outgoing command).
+
+### Reporting (bonus, theoretical)
+
+A reporting system can answer, for a given period:
+
+- **Number of watered plants** — plants that received at least one _completed_ irrigation during the period (an irrigation event ended within the window).
+- **Number of unwatered plants** — the complement: plants with no completed irrigation during the same period.
+- **Watering frequency per plant** — how many times each plant was watered during the period (a `COUNT` of irrigation events grouped by `plant_id`), e.g. _"Tomato — 3 waterings in the last hour"_.
+- **Number of added or deleted plants since a date** — added plants use the existing `created_at` (`created_at >= date`); deleted plants require a soft-delete marker (see below).
+
+Deletion tracking uses a **`deleted_at` timestamp (soft delete)** rather than an `active/inactive` boolean, because a boolean has no time and cannot answer "deleted since a specific date". A nullable `deleted_at` column supports `deleted_at >= date` directly. Soft delete means plant queries must filter `deleted_at IS NULL` and deleted plants must stop counting toward garden surface area. An alternative is hard delete plus a separate plant-audit table, which preserves cascade behaviour but adds a table and write discipline; `deleted_at` is the minimal solution for the report requirement.
+
+Locally the report is served from the `realtime_plant_metrics` state plus an irrigation event log; in the production architecture it reads from TimescaleDB.
+
 ## API documentation
 
 With the application running:
@@ -331,7 +367,7 @@ The Drizzle skill provides development guidance; it does not establish a databas
 
 ## Planned functionality
 
-- Humidity simulation and mocked irrigation commands.
+- Realtime plant metric simulation and mocked irrigation commands (see [Realtime plant metrics and irrigation](#realtime-plant-metrics-and-irrigation)).
 - Watering history and reporting.
 - API containerization.
 - Measured optimization of frequently used endpoints.
