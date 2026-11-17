@@ -39,6 +39,8 @@ import { PlantModule } from './plant/plant.module.js';
         emailVerification: {
           // The frontend page that receives ?token=… and POSTs it back.
           url: `${config.getOrThrow<string>('APP_URL')}/verify-email`,
+          // Short lifetime: a 6-digit code is guessable, so keep the window small.
+          ttl: '10m',
         },
       }),
     }),

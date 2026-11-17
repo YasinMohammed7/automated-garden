@@ -5,7 +5,7 @@ import { VerifyEmailDto } from './verify-email.dto.js';
 
 function makeDto(overrides: Record<string, unknown> = {}): VerifyEmailDto {
   const instance = new VerifyEmailDto();
-  Object.assign(instance, { token: 'abc', ...overrides });
+  Object.assign(instance, { code: '123456', ...overrides });
   return instance;
 }
 
@@ -14,23 +14,28 @@ async function errorsFor(overrides: Record<string, unknown> = {}) {
 }
 
 describe('VerifyEmailDto', () => {
-  it('accepts a valid token', async () => {
+  it('accepts a 6-digit code', async () => {
     const errors = await errorsFor();
     expect(errors).toHaveLength(0);
   });
 
-  it('rejects an empty token', async () => {
-    const errors = await errorsFor({ token: '' });
-    expect(errors.some((e) => e.property === 'token')).toBe(true);
+  it('rejects an empty code', async () => {
+    const errors = await errorsFor({ code: '' });
+    expect(errors.some((e) => e.property === 'code')).toBe(true);
   });
 
-  it('rejects a token longer than 256 characters', async () => {
-    const errors = await errorsFor({ token: 'a'.repeat(257) });
-    expect(errors.some((e) => e.property === 'token')).toBe(true);
+  it('rejects a code shorter than 6 digits', async () => {
+    const errors = await errorsFor({ code: '12345' });
+    expect(errors.some((e) => e.property === 'code')).toBe(true);
   });
 
-  it('rejects a non-string token', async () => {
-    const errors = await errorsFor({ token: 123 });
-    expect(errors.some((e) => e.property === 'token')).toBe(true);
+  it('rejects a code longer than 6 digits', async () => {
+    const errors = await errorsFor({ code: '1234567' });
+    expect(errors.some((e) => e.property === 'code')).toBe(true);
+  });
+
+  it('rejects a code with non-digit characters', async () => {
+    const errors = await errorsFor({ code: '12a456' });
+    expect(errors.some((e) => e.property === 'code')).toBe(true);
   });
 });

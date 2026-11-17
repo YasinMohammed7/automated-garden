@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { AuthenticationRegistry } from '@nestjs/authentication';
 import type { EmailVerificationLink } from '@nestjs/authentication';
@@ -9,7 +10,7 @@ const link: EmailVerificationLink = {
   userId: 'user-1',
   email: 'john.doe@example.com',
   url: 'http://localhost:3001/verify-email?token=abc',
-  expiresAt: new Date(),
+  expiresAt: new Date(Date.now() + 3_600_000),
 };
 
 function registryMock() {
@@ -54,9 +55,82 @@ describe('EmailVerificationMailer', () => {
     expect(repo.markEmailVerified).toHaveBeenCalledWith('user-1', 'john.doe@example.com');
   });
 
-  it('accepts a link to deliver', async () => {
+  it('logs a 6-digit code that consumes to the link token', async () => {
+    const logSpy = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     const mailer = await createMailer(repoMock(), registryMock());
 
-    expect(() => mailer.send(link)).not.toThrow();
+    mailer.send(link);
+
+    const message = logSpy.mock.calls
+      .map((args) => args[0])
+      .find((arg): arg is string => typeof arg === 'string' && arg.includes('Verification code'));
+    expect(message).toBeDefined();
+    const code = message?.match(/\d{6}/)?.[0];
+    expect(code).toBeDefined();
+
+    expect(mailer.consumeCode(code as string)).toBe('abc');
+    // Single use: the code is gone after consumption.
+    expect(mailer.consumeCode(code as string)).toBeUndefined();
+    logSpy.mockRestore();
+  });
+
+  it('returns undefined for an unknown code', async () => {
+    const mailer = await createMailer(repoMock(), registryMock());
+
+    expect(mailer.consumeCode('000000')).toBeUndefined();
+  });
+
+  it('allows a first send and then enforces a one-minute cooldown', async () => {
+    const mailer = await createMailer(repoMock(), registryMock());
+    const now = Date.now();
+
+    expect(mailer.resendCooldownSeconds('user-1', now)).toBe(0);
+    mailer.markSent('user-1', now);
+
+    const wait = mailer.resendCooldownSeconds('user-1', now + 30_000);
+    expect(wait).toBe(30);
+  });
+
+  it('lifts the cooldown after one minute', async () => {
+    const mailer = await createMailer(repoMock(), registryMock());
+    const now = Date.now();
+
+    mailer.markSent('user-1', now);
+    expect(mailer.resendCooldownSeconds('user-1', now + 60_000)).toBe(0);
+  });
+
+  it('does not issue a code when the link has no token', async () => {
+    const logSpy = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const mailer = await createMailer(repoMock(), registryMock());
+
+    mailer.send({ ...link, url: 'http://localhost:3001/verify-email' });
+
+    const codeLog = logSpy.mock.calls
+      .map((args) => args[0])
+      .find((arg): arg is string => typeof arg === 'string' && arg.includes('Verification code'));
+    expect(codeLog).toBeUndefined();
+    expect(errorSpy).toHaveBeenCalled();
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
+  it('invalidates the previous code when a new one is issued for the user', async () => {
+    const logSpy = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    const mailer = await createMailer(repoMock(), registryMock());
+
+    mailer.send({ ...link, url: 'http://localhost:3001/verify-email?token=first' });
+    mailer.send({ ...link, url: 'http://localhost:3001/verify-email?token=second' });
+
+    const codes = logSpy.mock.calls
+      .map((args) => args[0])
+      .filter((arg): arg is string => typeof arg === 'string' && arg.includes('Verification code'))
+      .map((message) => message.match(/\d{6}/)?.[0]);
+
+    expect(codes).toHaveLength(2);
+    // The first code was replaced: it no longer resolves to anything.
+    expect(mailer.consumeCode(codes[0] as string)).toBeUndefined();
+    expect(mailer.consumeCode(codes[1] as string)).toBe('second');
+    logSpy.mockRestore();
   });
 });
