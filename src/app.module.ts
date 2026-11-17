@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { HealthModule } from './health/health.module.js';
 import { GardenModule } from './garden/garden.module.js';
+import { PlantModule } from './plant/plant.module.js';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { GardenModule } from './garden/garden.module.js';
     AuthModule,
     HealthModule,
     GardenModule,
+    PlantModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

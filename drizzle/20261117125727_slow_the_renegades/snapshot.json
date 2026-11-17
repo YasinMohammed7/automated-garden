@@ -1,0 +1,369 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3093680f-18f6-44d6-a4eb-25ca13904adf",
+  "prevIds": ["705827c5-18f8-433d-a88f-98783fcc7d3d"],
+  "footprints": [
+    {
+      "statementType": "create_enum",
+      "statementTarget": ["enum", "public", "plant_type"],
+      "writes": [
+        "s|enum|public.plant_type",
+        "n|enum|public.plant_type",
+        "e|enum|public.plant_type",
+        "n|type|public.plant_type"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "plants"],
+      "writes": [
+        "s|tbl|public.plants",
+        "n|tbl|public.plants",
+        "e|tbl|public.plants",
+        "n|rel|public.plants",
+        "n|type|public.plants",
+        "n|rel|public.plants_pkey"
+      ],
+      "reads": ["n|sch|public", "n|enum|public.plant_type"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": ["index", "public", "gardens", "gardens_user_id_idx"],
+      "writes": [
+        "s|idx|public.gardens_user_id_idx",
+        "n|idx|public.gardens_user_id_idx",
+        "e|idx|public.gardens_user_id_idx",
+        "n|rel|public.gardens_user_id_idx"
+      ],
+      "reads": ["n|tbl|public.gardens", "n|sch|public", "n|col|public.gardens.user_id"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": ["index", "public", "plants", "plants_garden_id_idx"],
+      "writes": [
+        "s|idx|public.plants_garden_id_idx",
+        "n|idx|public.plants_garden_id_idx",
+        "e|idx|public.plants_garden_id_idx",
+        "n|rel|public.plants_garden_id_idx"
+      ],
+      "reads": ["n|tbl|public.plants", "n|sch|public", "n|col|public.plants.garden_id"]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "plants"],
+      "writes": [
+        "s|fk|public.plants.plants_garden_id_gardens_garden_id_fkey",
+        "n|fk|public.plants.plants_garden_id_gardens_garden_id_fkey",
+        "e|fk|public.plants.plants_garden_id_gardens_garden_id_fkey",
+        "n|con|public.plants.plants_garden_id_gardens_garden_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.plants",
+        "n|sch|public",
+        "n|tbl|public.gardens",
+        "n|sch|public",
+        "n|col|public.plants.garden_id",
+        "n|col|public.gardens.garden_id",
+        "e|uniqueness|public.gardens.garden_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "plants",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "plant_type",
+        "values": ["vegetable", "fruit", "flower"],
+        "entityType": "enums"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plant_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plant_name",
+        "type": "varchar(100)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "species",
+        "type": "varchar(100)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plant_type",
+        "type": "plant_type",
+        "typeSchema": "public",
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plantation_date",
+        "type": "date",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "surface_area_required",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "ideal_humidity_level",
+        "type": "smallint",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "garden_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "gardens",
+        "name": "gardens_user_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "user_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plants_garden_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "garden_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plants_garden_id_gardens_garden_id_fkey",
+        "nameExplicit": false,
+        "columns": ["garden_id"],
+        "schemaTo": "public",
+        "tableTo": "gardens",
+        "columnsTo": ["garden_id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plants_pkey",
+        "columns": ["plant_id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plants_name_not_blank",
+        "value": "char_length(btrim(\"plant_name\")) >= 1",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plants_species_not_blank",
+        "value": "char_length(btrim(\"species\")) >= 1",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plants_surface_area_required_non_negative",
+        "value": "\"surface_area_required\" >= 0",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "plants",
+        "name": "plants_ideal_humidity_level_range",
+        "value": "\"ideal_humidity_level\" >= 0 and \"ideal_humidity_level\" <= 100",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

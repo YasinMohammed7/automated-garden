@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   check,
   doublePrecision,
+  index,
   pgTable,
   text,
   timestamp,
@@ -43,6 +44,7 @@ export const gardens = pgTable(
   (table) => [
     check('gardens_name_not_blank', sql`char_length(btrim(${table.gardenName})) >= 1`),
     check('gardens_total_surface_area_non_negative', sql`${table.totalSurfaceArea} >= 0`),
+    index('gardens_user_id_idx').on(table.userId),
   ],
 );
 
