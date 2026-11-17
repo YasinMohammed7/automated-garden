@@ -6,7 +6,7 @@ A REST backend for managing gardens, plants, humidity levels, and automated irri
 
 The NestJS application scaffold, Swagger documentation, development tooling, PostgreSQL development container, Drizzle configuration, and Google sign-in are in place.
 
-User profiles (view, update, and delete the signed-in user's account) and garden management (create, view, update, and delete gardens with ownership scoping) are implemented. Plant management, irrigation, and reporting are planned.
+User profiles (view, update, and delete the signed-in user's account), garden management (create, view, update, and delete gardens with ownership scoping), and plant management (add plants to a garden, view, update, and delete them) are implemented. Irrigation and reporting are planned.
 
 ## Technology stack
 
@@ -123,9 +123,11 @@ src/
     gardens.schema.ts
   plants/
     plants.schema.ts
+  database/
+    database.ts
 ```
 
-This is the intended structure as those features are implemented.
+Table relations (user → gardens, garden → plants) and the typed `Database` alias are declared once in [database.ts](src/database/database.ts) with Drizzle's `defineRelations()` and passed to `DrizzleModule.forRootAsync()` in `src/app.module.ts`, which enables the relational query API (`db.query.*`).
 
 `drizzle.config.ts` discovers `src/**/*.schema.ts` and writes generated migrations to `drizzle/`.
 
@@ -145,7 +147,7 @@ npm run db:migrate
 
 Commit schema changes and their generated migrations together. Generating a migration does not apply it.
 
-The `users` and `oidc_identities` tables are in place; remaining domain tables will be introduced through migrations as features are implemented.
+The `users`, `oidc_identities`, and `gardens` tables are in place; remaining domain tables (including `plants`) are introduced through migrations as features are implemented.
 
 ## Authentication
 
@@ -220,6 +222,31 @@ Details:
 - Data access lives in [garden.repository.ts](src/garden/garden.repository.ts); [garden.service.ts](src/garden/garden.service.ts) applies `plainToInstance` and throws `NotFoundException` for missing gardens.
 - The `gardens` table in [garden.schema.ts](src/garden/garden.schema.ts) has `user_id` referencing `users` with `ON DELETE CASCADE`, so deleting an account removes its gardens.
 
+## Plants
+
+The plants feature adds plants to a garden and manages their data, scoped to the signed-in user.
+
+| Endpoint                             | Behavior                                              |
+| ------------------------------------ | ----------------------------------------------------- |
+| `POST /api/gardens/:gardenId/plants` | Adds a plant to one of the current user's gardens     |
+| `GET /api/gardens/:gardenId/plants`  | Lists the plants of one of the current user's gardens |
+| `GET /api/plants`                    | Lists all plants of the current user                  |
+| `GET /api/plants/:id`                | Returns one of the current user's plants              |
+| `PATCH /api/plants/:id`              | Updates a plant owned by the current user             |
+| `DELETE /api/plants/:id`             | Deletes a plant owned by the current user             |
+
+Details:
+
+- Creation uses a nested route because a plant belongs to a specific garden; `gardenId` is validated by `ParseUUIDPipe` and the service verifies the garden belongs to the user before inserting.
+- `plantName` and `species` are required (`1–100` characters, non-blank), `plantType` is one of `vegetable`, `fruit`, or `flower`, `plantationDate` is an ISO date, `surfaceAreaRequired` is a non-negative `double precision` value, and `idealHumidityLevel` is an integer between `0` and `100`. See [create-plant.dto.ts](src/plant/dto/create-plant.dto.ts).
+- `idealHumidityLevel` is the plant's target humidity level (`0–100`) used to drive irrigation decisions. It is configurable: set on create and editable through `PATCH /api/plants/:id`, validated at the DTO level and by a database `CHECK` constraint.
+- Updates cannot move a plant to another garden: [update-plant.dto.ts](src/plant/dto/update-plant.dto.ts) derives from `CreatePlantDto` without the parent reference.
+- Overcrowding is prevented: creating a plant, or updating a plant's `surfaceAreaRequired`, fails with `409` when the total surface area required by the garden's plants would exceed the garden's `totalSurfaceArea`. The error message reports the required and available area in square meters.
+- Ownership is enforced through the plant's garden, so a user cannot read or modify another user's plant: item lookups filter by the plant id against gardens owned by the user, and `findByGarden` uses the relational query API (`db.query.gardens.findFirst({ where: { gardenId, userId }, with: { plants: true } })`) to check ownership and fetch the plants in a single query.
+- Responses are serialized through [plant-response.dto.ts](src/plant/dto/plant-response.dto.ts), exposing `gardenId` but never a user id.
+- Data access lives in [plant.repository.ts](src/plant/plant.repository.ts); [plant.service.ts](src/plant/plant.service.ts) applies `plainToInstance` and throws `NotFoundException` for missing plants or gardens.
+- The `plants` table in [plant.schema.ts](src/plant/plant.schema.ts) has `garden_id` referencing `gardens` with `ON DELETE CASCADE`, so deleting a garden removes its plants.
+
 ## API documentation
 
 With the application running:
@@ -282,7 +309,7 @@ For setup and troubleshooting, see the [official Husky documentation](https://ty
 
 Application E2E tests cover the `/api` prefix, Swagger UI, and the generated OpenAPI document.
 
-Authentication logic (the OIDC resolver, session validation, email verification, and their controllers), the user profile service/controller, and the garden service/controller are covered by unit tests in the `*.spec.ts` files, run with `npm test`.
+Authentication logic (the OIDC resolver, session validation, email verification, and their controllers), the user profile service/controller, the garden and plant service/controllers, and the plant DTO validation rules (including the `0–100` target humidity range) are covered by unit tests in the `*.spec.ts` files, run with `npm test`.
 
 As domain features are implemented:
 
@@ -304,11 +331,8 @@ The Drizzle skill provides development guidance; it does not establish a databas
 
 ## Planned functionality
 
-- Plant management with ownership checks.
-- Validation of available garden surface area.
 - Humidity simulation and mocked irrigation commands.
 - Watering history and reporting.
-- Removal of account-owned plants when an account is deleted.
 - API containerization.
 - Measured optimization of frequently used endpoints.
 

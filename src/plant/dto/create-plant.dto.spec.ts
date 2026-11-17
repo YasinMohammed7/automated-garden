@@ -23,12 +23,16 @@ async function errorsFor(overrides: Record<string, unknown> = {}) {
 
 describe('CreatePlantDto', () => {
   it('accepts a valid plant payload', async () => {
-    expect(await errorsFor()).toHaveLength(0);
+    const errors = await errorsFor();
+    expect(errors).toHaveLength(0);
   });
 
   it('accepts idealHumidityLevel at the bounds 0 and 100', async () => {
-    expect(await errorsFor({ idealHumidityLevel: 0 })).toHaveLength(0);
-    expect(await errorsFor({ idealHumidityLevel: 100 })).toHaveLength(0);
+    const lowerBoundErrors = await errorsFor({ idealHumidityLevel: 0 });
+    expect(lowerBoundErrors).toHaveLength(0);
+
+    const upperBoundErrors = await errorsFor({ idealHumidityLevel: 100 });
+    expect(upperBoundErrors).toHaveLength(0);
   });
 
   it('rejects idealHumidityLevel below 0', async () => {
