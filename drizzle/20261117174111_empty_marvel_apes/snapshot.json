@@ -1,0 +1,185 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f3a0ba3e-03fc-4f02-be73-e7c1a6cd03ee",
+  "prevIds": ["3093680f-18f6-44d6-a4eb-25ca13904adf"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "realtime_plant_metrics"],
+      "writes": [
+        "s|tbl|public.realtime_plant_metrics",
+        "n|tbl|public.realtime_plant_metrics",
+        "e|tbl|public.realtime_plant_metrics",
+        "n|rel|public.realtime_plant_metrics",
+        "n|type|public.realtime_plant_metrics",
+        "n|rel|public.realtime_plant_metrics_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "realtime_plant_metrics"],
+      "writes": [
+        "s|fk|public.realtime_plant_metrics.realtime_plant_metrics_plant_id_plants_plant_id_fkey",
+        "n|fk|public.realtime_plant_metrics.realtime_plant_metrics_plant_id_plants_plant_id_fkey",
+        "e|fk|public.realtime_plant_metrics.realtime_plant_metrics_plant_id_plants_plant_id_fkey",
+        "n|con|public.realtime_plant_metrics.realtime_plant_metrics_plant_id_plants_plant_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.realtime_plant_metrics",
+        "n|sch|public",
+        "n|tbl|public.plants",
+        "n|sch|public",
+        "n|col|public.realtime_plant_metrics.plant_id",
+        "n|col|public.plants.plant_id",
+        "e|uniqueness|public.plants.plant_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "realtime_plant_metrics",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "plant_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "current_humidity_level",
+        "type": "smallint",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "last_irrigation_start_time",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "last_irrigation_end_time",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "created_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "updated_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "realtime_plant_metrics_plant_id_plants_plant_id_fkey",
+        "nameExplicit": false,
+        "columns": ["plant_id"],
+        "schemaTo": "public",
+        "tableTo": "plants",
+        "columnsTo": ["plant_id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "realtime_plant_metrics_pkey",
+        "columns": ["plant_id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "realtime_plant_metrics",
+        "name": "realtime_plant_metrics_current_humidity_level_range",
+        "value": "\"current_humidity_level\" >= 0 and \"current_humidity_level\" <= 100",
+        "entityType": "checks"
+      }
+    }
+  ]
+}
