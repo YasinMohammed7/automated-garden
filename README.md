@@ -4,7 +4,7 @@ A REST backend for managing gardens, plants, humidity levels, and automated irri
 
 ## Project status
 
-The NestJS application scaffold, Swagger documentation, development tooling, PostgreSQL development container, Drizzle configuration, and Google sign-in are in place.
+The NestJS application scaffold, Swagger documentation, development tooling, PostgreSQL development container, API containerization, Drizzle configuration, and Google sign-in are in place.
 
 User profiles (view, update, and delete the signed-in user's account), garden management (create, view, update, and delete gardens with ownership scoping), and plant management (add plants to a garden, view, update, and delete them) are implemented. Irrigation and reporting are planned.
 
@@ -57,26 +57,19 @@ cp .env.example .env
 
 Update its values as needed. Keep `.env` out of version control.
 
-Start PostgreSQL:
+Run the whole stack (PostgreSQL, migrations, and API) in Docker:
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
-Check startup:
+This builds the API image, waits for PostgreSQL to become healthy, applies migrations, and starts the API. See [Docker](#docker) for details. Verify it is up:
 
 ```bash
-docker compose ps
-docker compose logs postgres
+curl http://localhost:${PORT}/api/health
 ```
 
-Start the API in watch mode:
-
-```bash
-npm run start:dev
-```
-
-The API listens on port `3000` by default.
+Stop it with `docker compose down`.
 
 ## Environment variables
 
@@ -97,7 +90,7 @@ The API loads configuration through `ConfigModule`. Drizzle Kit runs separately 
 
 ## Database
 
-PostgreSQL runs in Docker Compose and is exposed locally at `127.0.0.1:5432`.
+PostgreSQL runs in Docker Compose and is exposed locally at `127.0.0.1:5432`. The `api` container connects to it through the Compose service name `postgres`; [compose.yaml](compose.yaml) overrides `DATABASE_URL` accordingly.
 
 A named volume preserves database data when the container is stopped or recreated.
 
@@ -148,6 +141,47 @@ npm run db:migrate
 Commit schema changes and their generated migrations together. Generating a migration does not apply it.
 
 The `users`, `oidc_identities`, and `gardens` tables are in place; remaining domain tables (including `plants`) are introduced through migrations as features are implemented.
+
+## Docker
+
+[Dockerfile](Dockerfile) packages the API as a development image: it installs dependencies, builds with `npm run build`, and on startup runs migrations before serving. [compose.yaml](compose.yaml) defines two services:
+
+- `postgres` — PostgreSQL 18 with a `healthcheck` so Compose knows when it accepts connections.
+- `api` — the API image; `depends_on` starts it only after PostgreSQL is healthy.
+
+Run the stack:
+
+```bash
+docker compose up --build
+```
+
+The API applies migrations on every start (`drizzle-kit migrate` is idempotent), then serves on the `PORT` from `.env`. Verify it:
+
+```bash
+curl http://localhost:${PORT}/api/health
+```
+
+Swagger is available at `http://localhost:${PORT}/docs`.
+
+Notes:
+
+- Inside the `api` container, `DATABASE_URL` uses the `postgres` service name instead of `127.0.0.1`; see [compose.yaml](compose.yaml).
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` must be real values in `.env`, or the API fails to boot.
+- The Docker Postgres container creates only the `POSTGRES_DB` database. The `automated_garden_test` database used by `npm run test:integration` is created separately on the host and is not needed for the Docker stack.
+
+### Developing on the host (optional)
+
+For development with the app in watch mode on the host, run only PostgreSQL in Docker:
+
+```bash
+docker compose up -d postgres
+```
+
+Then start the API:
+
+```bash
+npm run start:dev
+```
 
 ## Authentication
 
@@ -397,7 +431,6 @@ The Drizzle skill provides development guidance; it does not establish a databas
 
 - Realtime plant metric simulation and mocked irrigation commands (see [Realtime plant metrics and irrigation](#realtime-plant-metrics-and-irrigation)).
 - Watering history and reporting.
-- API containerization.
 - Measured optimization of frequently used endpoints.
 
 Architectural assumptions, environment variables, and usage instructions will be updated as features are implemented.
