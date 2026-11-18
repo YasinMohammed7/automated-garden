@@ -100,7 +100,9 @@ Repository unit tests are chain-mocked: pass a fake `db` object whose `select`/`
 
 DTO validation specs mirror the `ValidationPipe` (`transform: true`): run `plainToInstance(Dto, payload)` first, then `validate(instance)`, so the `@Type`/`@Transform` coercion callbacks (number coercion, email normalization) are actually exercised and asserted. Import `'reflect-metadata'` first, and store the `validate()` result in a variable before asserting.
 
-The garden-capacity check is enforced atomically in [plant.repository.ts](src/plant/plant.repository.ts): `createWithCapacity` and `updateWithCapacity` run the check and the write in one transaction and lock the garden row with `SELECT … FOR UPDATE`, so concurrent writes to the same garden serialize and the committed total can never exceed `totalSurfaceArea`. The database concurrency test that proves this under a real isolated PostgreSQL (AGENTS.md requirement) is still pending and belongs in the integration tier.
+The garden-capacity check is enforced atomically in [plant.repository.ts](src/plant/plant.repository.ts): `createWithCapacity` and `updateWithCapacity` run the check and the write in one transaction and lock the garden row with `SELECT … FOR UPDATE`, so concurrent writes to the same garden serialize and the committed total can never exceed `totalSurfaceArea`.
+
+Integration tests are colocated as `*.integration-spec.ts` and run with `npm run test:integration` against the isolated `automated_garden_test` database (`TEST_DATABASE_URL`). The setup applies migrations on startup and truncates tables between tests; they cover the garden-capacity concurrency case, schema check constraints, and `ON DELETE CASCADE` behaviour.
 
 For garden capacity changes, include a database concurrency test. For irrigation timing, use a controllable clock instead of real-time waits.
 

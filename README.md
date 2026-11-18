@@ -160,6 +160,31 @@ Google sign-in is implemented with `@nestjs/authentication` (OpenID Connect) and
 - On first sign-in, [google-oidc-account-resolver.ts](src/auth/google-oidc-account-resolver.ts) creates a `users` row with `email_verified = true` (Google asserted the address) and records the link in `oidc_identities` (primary key `provider, subject`).
 - A returning Google account is matched by identity. An existing user with the same _verified_ email is linked; linking by email to an unverified account is refused with `403` to prevent account pre-hijacking.
 
+#### Signing in through Swagger
+
+The OpenID Connect flow is browser-based, so it cannot be triggered from Swagger's "Authorize" button (that button only sends API keys or bearer tokens — it does not manage cookies). Instead, sign in through the login endpoint's redirect:
+
+1. Open the `auth` tag and expand `GET /api/auth/oidc/{provider}/login`.
+2. Set `provider` to `google` and `redirectTo` to `/docs`, then click **Execute**.
+3. Copy the `Location` URL from the response (Swagger shows a `302` and does not follow it).
+4. Paste it into the same browser that has Swagger open and complete Google sign-in.
+
+Google then redirects back to `/api/auth/oidc/google/callback`, the API sets the session cookie, and the browser lands on `/docs`. Because `/docs` and `/api` share an origin, every later "Execute" call from Swagger is automatically authenticated with that session.
+
+#### Re-pressing login while signed in vs. `link=true`
+
+The `link` query parameter selects between two different flows, both started from `GET /api/auth/oidc/google/login`:
+
+| Flow                | Request                         | Resolver context            | Behaviour                                                                                                                                                                                                                                              |
+| ------------------- | ------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Sign in**         | `?redirectTo=/docs` (no `link`) | `{}` — no `linkTo`          | Signs in the user the Google account is linked to and issues a fresh session (the previous session is rotated away). Pressing it while already signed in re-authenticates you as the same user with a new session — it never creates a duplicate user. |
+| **Connect account** | `?link=true`                    | `{ linkTo: currentUserId }` | Requires an active session (`401` otherwise). Links the chosen Google account to the signed-in user, or throws `409` if that Google account already belongs to another user. The session is left as-is; it does not sign in.                           |
+
+Two details worth knowing:
+
+- Google is configured with `authorizationParams: { prompt: 'select_account' }` (see [app.module.ts](src/app.module.ts)), so the account picker appears on **every** login, even when a Google session already exists — re-login always asks which account to use.
+- The `linkTo` branch in [google-oidc-account-resolver.ts](src/auth/google-oidc-account-resolver.ts) resolves the signed-in user, not the Google account: it returns `{ id: linkTo.id }` after linking, so `link=true` can never change which user the browser is signed in as.
+
 ### Sessions
 
 After sign-in the browser receives an `HttpOnly`, `SameSite=Lax` cookie (`__Host-sid`). Session state lives server-side:
@@ -298,21 +323,22 @@ Swagger is configured directly in `src/main.ts` using `@nestjs/swagger`.
 
 ## Available commands
 
-| Command                | Description                                         |
-| ---------------------- | --------------------------------------------------- |
-| `npm run start:dev`    | Start development mode with automatic restarts      |
-| `npm run start:debug`  | Start development mode with debugging               |
-| `npm run build`        | Build the application                               |
-| `npm run start:prod`   | Run the built application                           |
-| `npm run lint`         | Run type-aware lint checks                          |
-| `npm run format`       | Apply formatting                                    |
-| `npm run format:check` | Check formatting without modifying files            |
-| `npm test`             | Run tests selected by the main Vitest configuration |
-| `npm run test:watch`   | Run tests in watch mode                             |
-| `npm run test:cov`     | Run tests with coverage                             |
-| `npm run test:e2e`     | Run tests selected by the E2E configuration         |
-| `npm run db:generate`  | Generate migrations from schema changes             |
-| `npm run db:migrate`   | Apply pending migrations                            |
+| Command                    | Description                                         |
+| -------------------------- | --------------------------------------------------- |
+| `npm run start:dev`        | Start development mode with automatic restarts      |
+| `npm run start:debug`      | Start development mode with debugging               |
+| `npm run build`            | Build the application                               |
+| `npm run start:prod`       | Run the built application                           |
+| `npm run lint`             | Run type-aware lint checks                          |
+| `npm run format`           | Apply formatting                                    |
+| `npm run format:check`     | Check formatting without modifying files            |
+| `npm test`                 | Run tests selected by the main Vitest configuration |
+| `npm run test:watch`       | Run tests in watch mode                             |
+| `npm run test:cov`         | Run tests with coverage                             |
+| `npm run test:e2e`         | Run tests selected by the E2E configuration         |
+| `npm run test:integration` | Run integration tests against the test database     |
+| `npm run db:generate`      | Generate migrations from schema changes             |
+| `npm run db:migrate`       | Apply pending migrations                            |
 
 ### Git hooks with Husky
 
@@ -355,7 +381,7 @@ As domain features are implemented:
 - Integration tests will verify PostgreSQL queries, constraints, transactions, and concurrent capacity checks.
 - E2E tests will verify HTTP behavior, authentication, ownership, and complete application flows.
 
-Unit tests should remain independent of PostgreSQL and external services. Tests that exercise persistence will use an isolated PostgreSQL test database, separate from development and production data.
+Unit tests should remain independent of PostgreSQL and external services. Integration tests run against an isolated PostgreSQL test database (`automated_garden_test`, configured through `TEST_DATABASE_URL`), never development or production data. The integration suite (`*.integration-spec.ts`, run with `npm run test:integration`) applies migrations on startup, truncates tables between tests, and currently covers garden-capacity concurrency (parallel adds cannot exceed `totalSurfaceArea`), schema check constraints, and `ON DELETE CASCADE` behaviour.
 
 ## AI development assistance
 
