@@ -133,4 +133,47 @@ describe('EmailVerificationMailer', () => {
     expect(mailer.consumeCode(codes[1] as string)).toBe('second');
     logSpy.mockRestore();
   });
+
+  it('returns undefined for an expired code', async () => {
+    const logSpy = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    const mailer = await createMailer(repoMock(), registryMock());
+
+    mailer.send({ ...link, expiresAt: new Date(Date.now() - 1_000) });
+
+    const message = logSpy.mock.calls
+      .map((args) => args[0])
+      .find((arg): arg is string => typeof arg === 'string' && arg.includes('Verification code'));
+    const code = message?.match(/\d{6}/)?.[0];
+    expect(code).toBeDefined();
+
+    expect(mailer.consumeCode(code as string)).toBeUndefined();
+    logSpy.mockRestore();
+  });
+
+  it('keeps another user code when a new one is issued', async () => {
+    const logSpy = vi.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    const mailer = await createMailer(repoMock(), registryMock());
+
+    mailer.send({
+      ...link,
+      userId: 'user-1',
+      url: 'http://localhost:3001/verify-email?token=first',
+    });
+    mailer.send({
+      ...link,
+      userId: 'user-2',
+      url: 'http://localhost:3001/verify-email?token=second',
+    });
+
+    const codes = logSpy.mock.calls
+      .map((args) => args[0])
+      .filter((arg): arg is string => typeof arg === 'string' && arg.includes('Verification code'))
+      .map((message) => message.match(/\d{6}/)?.[0]);
+
+    expect(codes).toHaveLength(2);
+    // A code for a different user is left untouched.
+    expect(mailer.consumeCode(codes[0] as string)).toBe('first');
+    expect(mailer.consumeCode(codes[1] as string)).toBe('second');
+    logSpy.mockRestore();
+  });
 });

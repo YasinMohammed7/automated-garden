@@ -65,4 +65,9 @@ describe('CreateUserDto', () => {
     expect(dto.emailAddress).toBe('john.doe@example.com');
     await expect(validate(dto)).resolves.toHaveLength(0);
   });
+
+  it('rejects a non-string emailAddress', async () => {
+    const errors = await errorsFor({ emailAddress: 123 });
+    expect(errors.some((e) => e.property === 'emailAddress')).toBe(true);
+  });
 });

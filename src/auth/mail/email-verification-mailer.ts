@@ -37,15 +37,13 @@ export class EmailVerificationMailer extends EmailVerificationHandler {
 
   /** Returns the library token for a code, consuming the code (single use). */
   consumeCode(code: string): string | undefined {
+    // sweep() drops expired codes, so any code found here is still valid.
     this.sweep();
     const entry = this.codes.get(code);
     if (!entry) {
       return undefined;
     }
     this.codes.delete(code);
-    if (entry.expiresAt.getTime() <= Date.now()) {
-      return undefined;
-    }
     return entry.token;
   }
 

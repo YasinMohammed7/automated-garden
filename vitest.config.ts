@@ -8,5 +8,10 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    coverage: {
+      // Table schemas are declarative: their check/index/FK callbacks are
+      // evaluated only by drizzle-kit, never at runtime, so they are excluded.
+      exclude: ['**/*.schema.ts'],
+    },
   },
 });

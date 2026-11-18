@@ -69,4 +69,26 @@ describe('GardensRepository', () => {
     returning.mockResolvedValue([]);
     await expect(repo.delete('user-1', 'garden-1')).resolves.toBe(false);
   });
+
+  it('lists the gardens of a user', async () => {
+    const where = vi.fn().mockResolvedValue([garden]);
+    const from = vi.fn().mockReturnValue({ where });
+    const select = vi.fn().mockReturnValue({ from });
+    const repo = makeRepo({ select });
+
+    await expect(repo.findByUser('user-1')).resolves.toEqual([garden]);
+    expect(where).toHaveBeenCalled();
+  });
+
+  it('updates a garden and returns the first row', async () => {
+    const returning = vi.fn().mockResolvedValue([{ ...garden, gardenName: 'Front Yard' }]);
+    const where = vi.fn().mockReturnValue({ returning });
+    const set = vi.fn().mockReturnValue({ where });
+    const update = vi.fn().mockReturnValue({ set });
+    const repo = makeRepo({ update });
+
+    const result = await repo.update('user-1', 'garden-1', { gardenName: 'Front Yard' });
+    expect(result).toMatchObject({ gardenName: 'Front Yard' });
+    expect(set).toHaveBeenCalledWith({ gardenName: 'Front Yard' });
+  });
 });

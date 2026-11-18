@@ -213,4 +213,192 @@ describe('PlantsRepository', () => {
     expect(set).toHaveBeenCalledWith({ plantName: 'Cherry Tomato' });
     expect(tx.select).toHaveBeenCalledTimes(2);
   });
+
+  it('lists the plants of a user across their gardens', async () => {
+    const subWhere = vi.fn().mockReturnValue([]);
+    const subFrom = vi.fn().mockReturnValue({ where: subWhere });
+    const mainWhere = vi.fn().mockResolvedValue([plant]);
+    const mainFrom = vi.fn().mockReturnValue({ where: mainWhere });
+
+    const select = vi
+      .fn()
+      .mockImplementationOnce(() => ({ from: subFrom }))
+      .mockImplementationOnce(() => ({ from: mainFrom }));
+    const repo = makeRepo({ select });
+
+    await expect(repo.findByUser('user-1')).resolves.toEqual([plant]);
+  });
+
+  it('returns a plant owned by the user', async () => {
+    const subWhere = vi.fn().mockReturnValue([]);
+    const subFrom = vi.fn().mockReturnValue({ where: subWhere });
+    const mainWhere = vi.fn().mockResolvedValue([plant]);
+    const mainFrom = vi.fn().mockReturnValue({ where: mainWhere });
+
+    const select = vi
+      .fn()
+      .mockImplementationOnce(() => ({ from: subFrom }))
+      .mockImplementationOnce(() => ({ from: mainFrom }));
+    const repo = makeRepo({ select });
+
+    await expect(repo.findById('user-1', 'plant-1')).resolves.toBe(plant);
+  });
+
+  it('reports whether delete removed a plant', async () => {
+    const subWhere = vi.fn().mockReturnValue([]);
+    const subFrom = vi.fn().mockReturnValue({ where: subWhere });
+    const returning = vi.fn().mockResolvedValue([{ plantId: 'plant-1' }]);
+    const delWhere = vi.fn().mockReturnValue({ returning });
+    const del = vi.fn().mockReturnValue({ where: delWhere });
+    const select = vi.fn(() => ({ from: subFrom }));
+    const repo = makeRepo({ select, delete: del });
+
+    await expect(repo.delete('user-1', 'plant-1')).resolves.toBe(true);
+
+    returning.mockResolvedValue([]);
+    await expect(repo.delete('user-1', 'plant-1')).resolves.toBe(false);
+  });
+
+  it('throws when the insert returns no row', async () => {
+    const gardenFor = vi.fn().mockResolvedValue([garden]);
+    const gardenWhere = vi.fn().mockReturnValue({ for: gardenFor });
+    const gardenFrom = vi.fn().mockReturnValue({ where: gardenWhere });
+    const sumWhere = vi.fn().mockResolvedValue([{ total: 0 }]);
+    const sumFrom = vi.fn().mockReturnValue({ where: sumWhere });
+    const returning = vi.fn().mockResolvedValue([]);
+    const values = vi.fn().mockReturnValue({ returning });
+    const insert = vi.fn().mockReturnValue({ values });
+
+    const tx = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({ from: gardenFrom }))
+        .mockImplementationOnce(() => ({ from: sumFrom })),
+      insert,
+    };
+    const transaction = vi.fn((callback) => callback(tx));
+    const repo = makeRepo({ transaction });
+
+    await expect(repo.createWithCapacity('user-1', 'garden-1', input)).rejects.toThrow(
+      'Failed to create plant',
+    );
+  });
+
+  it('reports garden-not-found when the garden is gone during an update', async () => {
+    const subWhere = vi.fn().mockReturnValue([]);
+    const subFrom = vi.fn().mockReturnValue({ where: subWhere });
+    const plantWhere = vi.fn().mockResolvedValue([plant]);
+    const plantFrom = vi.fn().mockReturnValue({ where: plantWhere });
+    const gardenFor = vi.fn().mockResolvedValue([]);
+    const gardenWhere = vi.fn().mockReturnValue({ for: gardenFor });
+    const gardenFrom = vi.fn().mockReturnValue({ where: gardenWhere });
+
+    const tx = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({ from: subFrom }))
+        .mockImplementationOnce(() => ({ from: plantFrom }))
+        .mockImplementationOnce(() => ({ from: gardenFrom })),
+      update: vi.fn(),
+    };
+    const transaction = vi.fn((callback) => callback(tx));
+    const repo = makeRepo({ transaction });
+
+    await expect(
+      repo.updateWithCapacity('user-1', 'plant-1', { surfaceAreaRequired: 2 }),
+    ).resolves.toEqual({ ok: false, reason: 'garden-not-found' });
+  });
+
+  it('throws when the update returns no row', async () => {
+    const subWhere = vi.fn().mockReturnValue([]);
+    const subFrom = vi.fn().mockReturnValue({ where: subWhere });
+    const plantWhere = vi.fn().mockResolvedValue([plant]);
+    const plantFrom = vi.fn().mockReturnValue({ where: plantWhere });
+    const gardenFor = vi.fn().mockResolvedValue([garden]);
+    const gardenWhere = vi.fn().mockReturnValue({ for: gardenFor });
+    const gardenFrom = vi.fn().mockReturnValue({ where: gardenWhere });
+    const sumWhere = vi.fn().mockResolvedValue([{ total: 0 }]);
+    const sumFrom = vi.fn().mockReturnValue({ where: sumWhere });
+
+    const returning = vi.fn().mockResolvedValue([]);
+    const where = vi.fn().mockReturnValue({ returning });
+    const set = vi.fn().mockReturnValue({ where });
+    const update = vi.fn().mockReturnValue({ set });
+
+    const tx = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({ from: subFrom }))
+        .mockImplementationOnce(() => ({ from: plantFrom }))
+        .mockImplementationOnce(() => ({ from: gardenFrom }))
+        .mockImplementationOnce(() => ({ from: sumFrom })),
+      update,
+    };
+    const transaction = vi.fn((callback) => callback(tx));
+    const repo = makeRepo({ transaction });
+
+    await expect(
+      repo.updateWithCapacity('user-1', 'plant-1', { surfaceAreaRequired: 2 }),
+    ).rejects.toThrow('Failed to update plant');
+  });
+
+  it('reports overcrowded when growing a plant would exceed the garden', async () => {
+    const subWhere = vi.fn().mockReturnValue([]);
+    const subFrom = vi.fn().mockReturnValue({ where: subWhere });
+    const plantWhere = vi.fn().mockResolvedValue([plant]);
+    const plantFrom = vi.fn().mockReturnValue({ where: plantWhere });
+    const gardenFor = vi.fn().mockResolvedValue([garden]);
+    const gardenWhere = vi.fn().mockReturnValue({ for: gardenFor });
+    const gardenFrom = vi.fn().mockReturnValue({ where: gardenWhere });
+    const sumWhere = vi.fn().mockResolvedValue([{ total: 8 }]);
+    const sumFrom = vi.fn().mockReturnValue({ where: sumWhere });
+
+    const tx = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({ from: subFrom }))
+        .mockImplementationOnce(() => ({ from: plantFrom }))
+        .mockImplementationOnce(() => ({ from: gardenFrom }))
+        .mockImplementationOnce(() => ({ from: sumFrom })),
+      update: vi.fn(),
+    };
+    const transaction = vi.fn((callback) => callback(tx));
+    const repo = makeRepo({ transaction });
+
+    await expect(
+      repo.updateWithCapacity('user-1', 'plant-1', { surfaceAreaRequired: 5 }),
+    ).resolves.toEqual({
+      ok: false,
+      reason: 'overcrowded',
+      requiredArea: 5,
+      availableArea: 4.5,
+    });
+    expect(tx.update).not.toHaveBeenCalled();
+  });
+
+  it('throws when the direct update returns no row', async () => {
+    const subWhere = vi.fn().mockReturnValue([]);
+    const subFrom = vi.fn().mockReturnValue({ where: subWhere });
+    const plantWhere = vi.fn().mockResolvedValue([plant]);
+    const plantFrom = vi.fn().mockReturnValue({ where: plantWhere });
+
+    const returning = vi.fn().mockResolvedValue([]);
+    const where = vi.fn().mockReturnValue({ returning });
+    const set = vi.fn().mockReturnValue({ where });
+    const update = vi.fn().mockReturnValue({ set });
+
+    const tx = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({ from: subFrom }))
+        .mockImplementationOnce(() => ({ from: plantFrom })),
+      update,
+    };
+    const transaction = vi.fn((callback) => callback(tx));
+    const repo = makeRepo({ transaction });
+
+    await expect(
+      repo.updateWithCapacity('user-1', 'plant-1', { plantName: 'Cherry Tomato' }),
+    ).rejects.toThrow('Failed to update plant');
+  });
 });

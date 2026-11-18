@@ -90,4 +90,49 @@ describe('UsersRepository', () => {
       'Failed to create user',
     );
   });
+
+  it('returns the user by id', async () => {
+    const where = vi.fn().mockResolvedValue([user]);
+    const from = vi.fn().mockReturnValue({ where });
+    const select = vi.fn().mockReturnValue({ from });
+    const repo = makeRepo({ select });
+
+    await expect(repo.findById('user-1')).resolves.toBe(user);
+    expect(where).toHaveBeenCalled();
+  });
+
+  it('returns the user by email', async () => {
+    const where = vi.fn().mockResolvedValue([user]);
+    const from = vi.fn().mockReturnValue({ where });
+    const select = vi.fn().mockReturnValue({ from });
+    const repo = makeRepo({ select });
+
+    await expect(repo.findByEmail('john.doe@example.com')).resolves.toBe(user);
+    expect(where).toHaveBeenCalled();
+  });
+
+  it('updates a user and returns the first row', async () => {
+    const returning = vi.fn().mockResolvedValue([{ ...user, firstName: 'Jane' }]);
+    const where = vi.fn().mockReturnValue({ returning });
+    const set = vi.fn().mockReturnValue({ where });
+    const update = vi.fn().mockReturnValue({ set });
+    const repo = makeRepo({ update });
+
+    const result = await repo.update('user-1', { firstName: 'Jane' });
+    expect(result).toMatchObject({ firstName: 'Jane' });
+    expect(set).toHaveBeenCalledWith({ firstName: 'Jane' });
+    expect(where).toHaveBeenCalled();
+  });
+
+  it('reports whether delete removed a row', async () => {
+    const returning = vi.fn().mockResolvedValue([{ userId: 'user-1' }]);
+    const where = vi.fn().mockReturnValue({ returning });
+    const del = vi.fn().mockReturnValue({ where });
+    const repo = makeRepo({ delete: del });
+
+    await expect(repo.delete('user-1')).resolves.toBe(true);
+
+    returning.mockResolvedValue([]);
+    await expect(repo.delete('user-1')).resolves.toBe(false);
+  });
 });
